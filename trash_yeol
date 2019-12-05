@@ -1,0 +1,65 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<unistd.h>
+#include<fcntl.h>
+#include<dirent.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+
+int main(int argc, char *argv[]) {
+
+	DIR *dir_info;
+	struct dirent *dir_entry;
+	int flag = -1;
+	
+	dir_info = opendir("/home/camper");
+
+	if (dir_info == NULL)
+		perror("dir open");
+
+	while (dir_entry = readdir(dir_info)) {
+		if (strcmp(dir_entry->d_name, "trash") == 0) {		//trash랑 같으면..
+			flag = 1;
+
+			break;
+		}
+	}
+
+	if (flag == -1) {		
+		if (mkdir("/home/camper/trash", 0755) == -1) {
+			perror("create error");
+
+			exit(1);
+		}
+	}
+
+	closedir(dir_info);
+	//휴지통 디렉토리가 없으면 생성 - /home/camper/
+	
+
+	flag = -1;			//flag 초기화
+	dir_info = opendir(".");				//현재 디렉토리 open
+
+	if (dir_info == NULL)			
+		perror("dir open");
+
+	while (dir_entry = readdir(dir_info)) {
+		if (strcmp(dir_entry->d_name, argv[1])==0) {		//매개변수와 같은 file이 있으면 삭제
+			unlink(argv[1]);
+			flag = 1;
+
+			puts("file deleted");
+
+			break;
+		}
+	}
+
+	closedir(dir_info);
+
+	if (flag == -1)
+		puts("There are no files in this directory\n");
+
+
+	return 0;
+}
