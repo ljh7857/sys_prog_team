@@ -6,14 +6,14 @@
 #include<dirent.h>
 #include<sys/types.h>
 #include<sys/stat.h>
+#include<sys/wait.h>
 
 ino_t getInode(char *);
 void dirPath(ino_t);
 void subdirPath(ino_t, char *, int);
 
-char *path = "/";
+char path[BUFSIZ];
 
-///segmentation fault.. let code fix
 int main(int argc, char *argv[]) {
 
 	DIR *dir_info;
@@ -42,27 +42,55 @@ int main(int argc, char *argv[]) {
 	}
 	closedir(dir_info);
 
-	char *token;
-	char *delimiter = " ";
-	char *arglist[BUFSIZ];
-	char argString[BUFSIZ];
+	int pid;
 
-	int idx = 0;
+	if ((pid = fork()) == -1)
+		perror("fork()");
 
-	fgets(argString, BUFSIZ, stdin);
-	token = strtok(token, delimiter);
-	while (token != NULL) {
-		arglist[idx++] = token;
+	if (pid > 0) {
+		wait(NULL);
+		//pwd
+		dirPath(getInode("."));
+		printf("current directory path : ");
+		puts(path);
 
-		token = strtok(NULL, delimiter);
 	}
-	dirPath(getInode("."));		//pwd얻기
 
-	arglist[idx] = NULL;		//arglist 저장
-	execvp(*arglist, arglist);	//arglist 실행
 
+	else {
+		//execvp
+		char *token;
+		char *delimiter = " ";
+		char *arglist[BUFSIZ];
+		char argString[BUFSIZ];
+
+		int idx = 0;
+
+		printf(" Use the rm command with the files to delete : ");
+		fgets(argString, BUFSIZ, stdin);
+		argString[strlen(argString) - 1] = '\0';
+		token = strtok(argString, delimiter);
+		while (token != NULL) {
+
+			arglist[idx++] = token;
+
+			token = strtok(NULL, delimiter);
+		}
+		arglist[idx] = NULL;
+
+		/*
+		for (int i = 0; i < idx; i++)
+				printf("arglist[%d] : %s\n", i, arglist[i]);
+
+		*/
+
+		execvp(*arglist, arglist);
+
+	}
 	return 0;
 }
+
+
 
 ino_t getInode(char *filename) {
 	struct stat info;
@@ -87,6 +115,8 @@ void dirPath(ino_t st_ino) {
 		inode = getInode(".");
 
 		dirPath(inode);
+
+		strcat(path, "/");
 		strcat(path, locate);
 	}
 }
