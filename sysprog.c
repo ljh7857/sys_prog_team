@@ -11,8 +11,10 @@
 #include<sys/stat.h>
 #include<sys/wait.h>
 
-#define SLEEPTIME 2
+#define SLEEPTIME 1
+#define SLEEPTRIES 5
 #define MAXTRIES 3
+#define BEEP putchar('\a')
 #define CAMPER "/home/camper"
 #define TRASHPATH "/home/camper/trash"
 #define oops(message,num) {	perror(message); exit(num);	}
@@ -26,7 +28,8 @@ void make_arglist(char *);
 
 void tty_mode(int);
 void set_terminal(void);
-void get_response(int);
+void set_nodelay_mode(void);
+void get_response(int, int);
 int get_char(void);
 
 void handler(int);
@@ -35,8 +38,8 @@ char *arglist[BUFSIZ];
 char *filelist[BUFSIZ];		//삭제 file들의 이름을 저장할 배열
 char *path;
 
-/*	Topics to cover	
-		- chdir issue : Can not chdir with exec function. we should handle this 
+/*	Topics to cover
+		- chdir issue : Can not chdir with exec function. we should handle this
 		- pwd file issue : Should we Create pwd file to save path of current file? or there are other ways?
 		- Recycle Bin issue : We need to handle emptying the Recycle Bin and deleting files in the Recycle Bin.
 		- empty issue : If an empty command is entered, segmentation fault is triggered.
@@ -54,7 +57,7 @@ int main(int argc, char *argv[]) {
 	puts("");
 	printf("You can end the process using SIGNAL");
 	puts("");
-
+	tty_mode(0);
 
 	signal(SIGINT, handler);
 	signal(SIGKILL, SIG_DFL);
@@ -67,7 +70,7 @@ int main(int argc, char *argv[]) {
 
 		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
 			check_the_trash();
-		
+
 		else {
 			make_arglist(argString);
 
@@ -84,17 +87,16 @@ int main(int argc, char *argv[]) {
 					/*
 					path를 pwd를 저장하는 file로 전달{
 						file로는 한줄에 하나씩 보냄.
-						삭제한 file 정보는 file structure array를 만들어 저장. 
+						삭제한 file 정보는 file structure array를 만들어 저장.
 							- filename, filenumber
 						}
-					
 
 					fork()
 					child - move to trash directory.(exec(mv)) if not exist trash directory, print error message and exit
 					parent - wait until child process exit(), delete the file that in current directory(exec(rm))
 					*/
 				}
-				else 
+				else
 					execvp(*arglist, arglist);		//delete anyway	
 			}
 			else if (!strcmp(*arglist, "re")) {		//recover
@@ -102,7 +104,7 @@ int main(int argc, char *argv[]) {
 				/*
 				pwd file에서 복원할 file의 이름을 file structure array에서 비교하여 해당 file이 있을 시 pwd file에서
 				filecount 숫자번째 줄의 경로를 받아옴.
-				해당 경로에 file mv! (exec(mv))		
+				해당 경로에 file mv! (exec(mv))
 				*/
 			}
 			else									//other options
@@ -146,7 +148,8 @@ void check_the_trash(void) {
 
 	tty_mode(0);
 	set_terminal();
-	get_response(MAXTRIES);
+	set_nodelay_mode();
+	get_response(MAXTRIES, SLEEPTRIES);
 	tty_mode(1);
 
 	closedir(dir_info);
@@ -233,24 +236,35 @@ void set_terminal(void) {
 
 	tcsetattr(0, TCSANOW, &ttystate);
 }
-
-void get_response(int tries) {
+void set_nodelay_mode(void) {
+	int termflags;
+	termflags = fcntl(0, F_GETFL);
+	termflags |= O_NDELAY;
+	fcntl(0, F_SETFL, termflags);
+}
+void get_response(int tries, int sleeptry) {
 	char response;
 
 	puts("There is no Recycle bin. Do you want to create it? y/n");
-	response = tolower(get_char());
+	while (1) {
+		sleep(SLEEPTIME);
+		response = tolower(get_char());
 
-	switch (response) {
-	case 'y':
-		mkdir(TRASHPATH, 0755);
-		puts("You have successfully created Recycle Bin.");
+		if (response == 'y') {
+			mkdir(TRASHPATH, 0755);
+			puts("You have successfully created Recycle Bin.");
 
-		return;
-
-	case 'n':
-		puts("Do not create Recycle Bin");
-
-		return;
+			return;
+		}
+		if (response == 'n') {
+			puts("Do not create Recycle Bin");
+			return;
+		}
+		if (sleeptry-- == 0) {
+			printf("timeout\n");
+			return;
+		}
+		BEEP;
 	}
 	//시간에 따른 보안상의 이유로 종료도 추가하면 좋을 듯.
 }
@@ -264,7 +278,7 @@ int get_char(void) {
 			return ch;
 		else
 			puts("you can only enter y or n in any case\n\t-\tIt doesn't matter if it's capital letter or not.");
-		
+
 		if (++count >= MAXTRIES) {
 			puts("Shut down for security reasons.");
 
@@ -275,7 +289,7 @@ int get_char(void) {
 }
 
 void handler(int signum) {
-	//tty_mode(1);
+	tty_mode(1);
 	puts("shutdown");
 	//프로세스를 종료하면 더이상 휴지통을 사용하지 못합니다.
 	//- 휴지통을 삭제하시겠습니까?
