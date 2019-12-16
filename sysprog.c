@@ -123,9 +123,15 @@ int main(int argc, char *argv[]) {
 				*/
 			}
 			else if (!strcmp(*arglist,  "cd")){
-				getcwd(wannago, 256);
-				strcpy(wannago, arglist[1]);
-				chdir(wannago);
+				
+				//getcwd(wannago, 256);
+				if (arglist[1] !=  NULL){
+					strcpy(wannago, arglist[1]);
+				}
+				else
+					strcpy(wannago, CAMPER);
+				if( chdir(wannago) == -1)
+					printf("no such file or dir\n");
 			}
 			else{									//other options
 				if( (pid = fork()) == -1)
