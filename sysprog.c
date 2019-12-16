@@ -49,9 +49,9 @@ void inum_to_name(ino_t, char*, int);
 		- Recycle Bin issue : We need to handle emptying the Recycle Bin and deleting files in the Recycle Bin.
 		- empty issue : If an empty command is entered, segmentation fault is triggered.
 */
-int main(int argc, char *argv[]) {
-
-
+int main(int argc, char *argv[]){
+	
+	tty_mode(0);
 	printf("####################################################################\n");
 	puts("| Instructions");
 	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
@@ -81,6 +81,9 @@ int main(int argc, char *argv[]) {
 		printNowLocat();
 
 		fgets(argString, BUFSIZ, stdin);
+		if(argString[0] == '\n' || argString[0] == ' ')
+			continue;
+
 		argString[strlen(argString) - 1] = '\0';
 
 		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
@@ -92,11 +95,11 @@ int main(int argc, char *argv[]) {
 			if (!strcmp(*arglist, "rm")) {		//delete or trash
 				puts("Do you want to delete the file? Or throw it in the trash?\n - delete : d, throw : t");
 
-				char decision;
-				scanf("%c", &decision);
+				char decision = 't';
+				decision = fgetc(stdin);
 
 				if (decision == 't') {
-					dirPath(getInode("."));		//path
+					//dirPath(getInode("."));		//path
 
 					//puts(path);			
 					/*
@@ -111,8 +114,14 @@ int main(int argc, char *argv[]) {
 					parent - wait until child process exit(), delete the file that in current directory(exec(rm))
 					*/
 				}
-				else 
-					execvp(*arglist, arglist);		//delete anyway	
+				else if (decision == 'd'){
+				        char nowloc[256];
+				        getcwd(nowloc,256);
+					strcat(nowloc, "/");		//not cpy...
+					strcat(nowloc, arglist[1]);
+					remove(nowloc);		//delete anyway
+					printf("removed: %s\n", nowloc);	
+				}
 			}
 			else if (!strcmp(*arglist, "re")) {		//recover
 				//puts(argString);
@@ -315,7 +324,7 @@ int get_char(void) {
 }
 
 void handler(int signum) {
-	//tty_mode(1);
+	tty_mode(1);
 	puts("shutdown");
 	//프로세스를 종료하면 더이상 휴지통을 사용하지 못합니다.
 	//- 휴지통을 삭제하시겠습니까?
