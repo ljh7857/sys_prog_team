@@ -13,110 +13,139 @@
 
 #define SLEEPTIME 2
 #define MAXTRIES 3
-#define CAMPER "/home/camper"
-#define TRASHPATH "/home/camper/trash"
-#define oops(message,num) {	perror(message); exit(num);	}
+#define CAMPERPATH "/home/ubuntu/jeongyeol/proj"			//camper
+#define TRASHPATH "/home/ubuntu/jeongyeol/proj/trash"		//camper/trash
+#define oops(message,num) {	perror(message); exit(num);	} 
+
+int check_the_trash(void);
+void trash_exec(void);
+
+int check_the_file(void);
+void initial_arglist(void);
+void make_arglist(char *);
+
+void tty_mode(int);
+void set_terminal(void);
+char get_response(int);
+void get_decision(int);
+int get_char(int);
+
+void handler(int);
 
 ino_t getInode(char *);
 void dirPath(ino_t);
 void subdirPath(ino_t, char *, int);
 
-void check_the_trash(void);
-void make_arglist(char *);
+void printNowLocat();	//Ω©√≥∑≥ «ˆ¿Á ¿ßƒ°∏¶ √‚∑¬
 
-void tty_mode(int);
-void set_terminal(void);
-void get_response(int);
-int get_char(void);
-
-void handler(int);
-
-char *arglist[BUFSIZ];
-char *filelist[BUFSIZ];		//ÏÇ≠Ï†ú fileÎì§Ïùò Ïù¥Î¶ÑÏùÑ Ï†ÄÏû•Ìï† Î∞∞Ïó¥
 char *path;
+char *arglist[BUFSIZ];
+char file_path[BUFSIZ];
+int idx;
 
-
-//ÌòÑÏúÑÏπò Ï†ïÎ≥¥Î•º Ï∂úÎ†•
-void printNowLocat();	//ÏâòÏ≤òÎüº ÌòÑÏû¨ ÏúÑÏπòÎ•º Ï∂úÎ†•
-ino_t get_inode(char*);
-void printpathto(ino_t);
-void inum_to_name(ino_t, char*, int);
-
-
-/*	Topics to cover	
-		- chdir issue : Can not chdir with exec function. we should handle this 
-		- pwd file issue : Should we Create pwd file to save path of current file? or there are other ways?
-		- Recycle Bin issue : We need to handle emptying the Recycle Bin and deleting files in the Recycle Bin.
-		- empty issue : If an empty command is entered, segmentation fault is triggered.
+/*
+	- pwd issue : pwd file ª˝º∫, æÓ∂≤ µ∑∫≈‰∏Æø° ¿÷¥¬ file¿Ã∂Ûµµ pathøÕ filename¿ª pwd.txt fileø° ¿˙¿Â.
+				- execvpªÁøÎ¿∏∑Œ, trash µ∑∫≈‰∏Æ∑Œ move.
+				- but µ—¥Ÿ ∞∞¿Ã æ»âŒ; ¿Ã¿Ø¥¬ ¿ﬂ ∏∏£∞⁄¿Ω.. ∞¢∞¢¿« µø¿€¿∫ ¿ﬂ ºˆ«‡µ .
+	- Recover : ∫πø¯ ±∏«ˆ
+	- ƒ⁄µÂ «’ƒ°±‚..
 */
 int main(int argc, char *argv[]) {
 
-	puts("Instructions");
-	printf("You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n - If there is no recycle bin, you can create it.\n - There are no additional options\n");
-	puts("");
-	printf("You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n - There are additional options. \n");
-	puts("");
-	printf("You can use the [ re ] command to restore files from the Recycle Bin.\n - There are no additional options.\n");
-	puts("");
-	printf("Other commands and options are also supported.\n");
-	puts("");
-	printf("You can end the process using SIGNAL");
+	printf("--------------------------------------------------------------------------------\n");
+	puts("| Instructions");
+	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
+	puts("| ");
+	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
+	puts("| ");
+	printf("| You can use the [ re ] command to restore files from the Recycle Bin. \n|  - There are no additional options.\n");
+	puts("| ");
+	printf("| Other commands and options are also supported. \n");
+	puts("| ");
+	printf("| You can end the process using SIGNAL.");
 	puts("");
 
+	printf("--------------------------------------------------------------------------------\n\n");
 
 	signal(SIGINT, handler);
 	signal(SIGKILL, SIG_DFL);
 	while (1) {
 		char argString[BUFSIZ];
-		int idx = 0;
-		
+		char wannago[256];
+
 		//pwd
 		printNowLocat();
 
 		fgets(argString, BUFSIZ, stdin);
 		argString[strlen(argString) - 1] = '\0';
 
-		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
-			check_the_trash();
-		
+		if (!strcmp(argString, "~@")) {
+			int flag = check_the_trash();
+			char ch;
+			if (flag == -1) {
+				tty_mode(0);
+				set_terminal();
+				ch = get_response(MAXTRIES);
+				tty_mode(1);
+
+				if (ch == 'n') 
+					puts("If you don't create a Recycle Bin, you can't use the -t option");
+				else
+					puts("Now you can send files to the Recycle Bin.");
+			}
+		}
+
 		else {
+			initial_arglist();
 			make_arglist(argString);
 
 			if (!strcmp(*arglist, "rm")) {		//delete or trash
-				puts("Do you want to delete the file? Or throw it in the trash?\n - delete : d, throw : t");
+				int pid;
 
-				char decision;
-				scanf("%c", &decision);
+				if ((pid = fork()) == -1)
+					oops("cannot fork", 1);
 
-				if (decision == 't') {
-					dirPath(getInode("."));		//path
+				if (pid > 0) {
+					wait(NULL);
 
-					//puts(path);			
-					/*
-					pathÎ•º pwdÎ•º Ï†ÄÏû•ÌïòÎäî fileÎ°ú Ï†ÑÎã¨{
-						fileÎ°úÎäî ÌïúÏ§ÑÏóê ÌïòÎÇòÏî© Î≥¥ÎÉÑ.
-						ÏÇ≠Ï†úÌïú file Ï†ïÎ≥¥Îäî file structure arrayÎ•º ÎßåÎì§Ïñ¥ Ï†ÄÏû•. 
-							- filename, filenumber
-						}
-					
-					fork()
-					child - move to trash directory.(exec(mv)) if not exist trash directory, print error message and exit
-					parent - wait until child process exit(), delete the file that in current directory(exec(rm))
-					*/
+					continue;
 				}
-				else 
-					execvp(*arglist, arglist);		//delete anyway	
+				else {
+					tty_mode(0);
+					set_terminal();
+					get_decision(MAXTRIES);
+					tty_mode(1);
+				}
 			}
+			///Do we have to deal with rmdir too???
 			else if (!strcmp(*arglist, "re")) {		//recover
 				//puts(argString);
 				/*
-				pwd fileÏóêÏÑú Î≥µÏõêÌï† fileÏùò Ïù¥Î¶ÑÏùÑ file structure arrayÏóêÏÑú ÎπÑÍµêÌïòÏó¨ Ìï¥Îãπ fileÏù¥ ÏûàÏùÑ Ïãú pwd fileÏóêÏÑú
-				filecount Ïà´ÏûêÎ≤àÏß∏ Ï§ÑÏùò Í≤ΩÎ°úÎ•º Î∞õÏïÑÏò¥.
-				Ìï¥Îãπ Í≤ΩÎ°úÏóê file mv! (exec(mv))		
+				pwd fileø°º≠ ∫πø¯«“ file¿« ¿Ã∏ß¿ª file structure arrayø°º≠ ∫Ò±≥«œø© «ÿ¥Á file¿Ã ¿÷¿ª Ω√ pwd fileø°º≠
+				filecount º˝¿⁄π¯¬∞ ¡Ÿ¿« ∞Ê∑Œ∏¶ πﬁæ∆ø».
+				«ÿ¥Á ∞Ê∑Œø° file mv! (exec(mv))
 				*/
 			}
-			else									//other options
-				execvp(*arglist, arglist);
+			else if (!strcmp(*arglist, "cd")) {
+				getcwd(file_path, BUFSIZ);
+				strcpy(file_path, arglist[1]);
+				chdir(file_path);
+			}
+			else {									//other options
+				int pid;
+
+				if ((pid = fork()) == -1)
+					oops("cannot fork", 1);
+
+				if (pid > 0) {
+					wait(NULL);
+
+					continue;
+				}
+				else {
+					execvp(*arglist, arglist);
+				}
+			}
 		}
 	}
 
@@ -127,7 +156,6 @@ int main(int argc, char *argv[]) {
 void make_arglist(char *argString) {
 	char *token;
 	char *delimiter = " ";
-	int idx = 0;
 
 	token = strtok(argString, delimiter);
 	while (token != NULL) {
@@ -135,13 +163,25 @@ void make_arglist(char *argString) {
 		token = strtok(NULL, delimiter);
 	}
 	arglist[idx] = NULL;
+
+	/*
+	printf("idx : %d\n", idx);
+	for (int i = 0; i < idx; i++)
+		printf("arglist[%d] : %s\n", i, arglist[i]);
+	*/
 }
 
-void check_the_trash(void) {
+void initial_arglist() {
+	for (int i = 0; i < BUFSIZ; i++)
+		arglist[i] = NULL;
+	idx = 0;
+}
+
+int check_the_trash(void) {
 	DIR *dir_info;
 	struct dirent *dir_entry;
 
-	dir_info = opendir(CAMPER);
+	dir_info = opendir(CAMPERPATH);
 
 	if (dir_info == NULL)
 		oops("open", 1);
@@ -150,16 +190,37 @@ void check_the_trash(void) {
 		if (strcmp(dir_entry->d_name, "trash") == 0) {
 			puts("There is Recycle Bin");
 
-			return;
+			return 0;
 		}
 	}
 
-	tty_mode(0);
-	set_terminal();
-	get_response(MAXTRIES);
-	tty_mode(1);
+	closedir(dir_info);
+	return -1;
+}
+
+int check_the_file(void) {
+	DIR *dir_info;
+	struct dirent *dir_entry;
+
+	dir_info = opendir(CAMPERPATH);
+
+	if (dir_info == NULL)
+		oops("open", 1);
+
+	while (dir_entry = readdir(dir_info)) {
+		if (strcmp(dir_entry->d_name, "pwd.txt") == 0) {
+			puts("There is pwd.txt");
+
+			closedir(dir_info);
+			return 0;
+		}
+	}
 
 	closedir(dir_info);
+	puts("There is no pwd.txt");
+	puts("Create pwd.txt");
+
+	return -1;
 }
 
 
@@ -186,9 +247,7 @@ void dirPath(ino_t st_ino) {
 		inode = getInode(".");
 
 		dirPath(inode);
-
-		strcat(path, "/");
-		strcat(path, locate);
+		printf("/%s", locate);
 	}
 }
 
@@ -219,18 +278,28 @@ void subdirPath(ino_t st_ino, char *string, int length) {
 	exit(1);
 }
 
+void printNowLocat() {
+	char nowloc[256];
+
+	getcwd(nowloc, 256);
+
+	if (getInode(".") == getInode("..")) {
+		printf("/");
+	}//for root dir
+
+	dirPath(getInode("."));
+	printf("(^_^) : ");
+
+	chdir(nowloc);
+}
+
 void tty_mode(int how) {
 	static struct termios original_mode;
-	static int original_flags;
 
-	if (how == 0) {
+	if (how == 0)
 		tcgetattr(0, &original_mode);
-		original_flags = fcntl(0, F_GETFL);
-	}
-	else {
+	else
 		tcsetattr(0, TCSANOW, &original_mode);
-		original_flags = fcntl(0, F_SETFL, original_flags);
-	}
 }
 
 void set_terminal(void) {
@@ -244,123 +313,166 @@ void set_terminal(void) {
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
-void get_response(int tries) {
+char get_response(int tries) {
 	char response;
 
 	puts("There is no Recycle bin. Do you want to create it? y/n");
-	response = tolower(get_char());
+	response = tolower(get_char(0));
 
 	switch (response) {
 	case 'y':
 		mkdir(TRASHPATH, 0755);
-		puts("You have successfully created Recycle Bin.");
-
-		return;
+		puts("You have successfully created!");
+		puts("Now you can send files to the Recycle Bin.");
+		return response;
 
 	case 'n':
 		puts("Do not create Recycle Bin");
+		
+		return response;
+	}
+}
+
+void get_decision(int tries) {
+	char decision;
+	int fd;
+	int wr;
+
+	puts("Do you want to delete the file? Or throw it in the trash?\n - delete : d, throw : t");
+
+	decision = tolower(get_char(1));
+
+	switch (decision) {
+	case 't': {
+		getcwd(file_path, BUFSIZ);
+		puts(file_path);		//file_path
+		
+		//chdir¿ª æ≤¡ˆæ ∞Ì, file ∏∏µÈ±‚..?
+		chdir(CAMPERPATH);
+		//pwd.txt file¿ª ∏∏µÈ±‰ «‘.
+
+		tty_mode(1);
+
+		int flag = check_the_file();
+		if (flag == -1) {
+			//creat
+			if ((fd = creat("pwd.txt", 0644)) == -1) {
+				tty_mode(1);
+				oops("create", 1);
+			}
+		}
+		else {
+			if ((fd = open("pwd.txt", O_RDWR | O_APPEND, S_IWUSR | S_IRUSR)) == -1) {
+				tty_mode(1);
+				oops("open", 1);
+			}
+		}
+		chdir(file_path);
+
+		/*
+		char temp_string[BUFSIZ];
+		for (int i = 1; i <= idx; i++) {
+			if (*arglist[i] == '-')
+				continue;
+			else{
+				strcpy(temp_string, arglist[i]);
+				//printf("arglist[%d] : %s\n", i, arglist[i]);
+
+				strcat(temp_string, " ");
+				strcat(temp_string, file_path);
+				temp_string[strlen(temp_string)] = '\n';
+
+				//printf("temp_string : %s\n", temp_string);
+
+				if ((wr = write(fd, temp_string, strlen(temp_string))) == -1) {
+					tty_mode(1);
+					oops("write", 1);
+				}
+			}
+		}
+		*/
+		
+		///¿Ã∞≈ ¿Ã»ƒø°¥¬ ø÷ Ω««‡æ»µ«≥ƒ..
+		trash_exec();
+
+		tty_mode(1);
 
 		return;
 	}
-	//ÏãúÍ∞ÑÏóê Îî∞Î•∏ Î≥¥ÏïàÏÉÅÏùò Ïù¥Ïú†Î°ú Ï¢ÖÎ£åÎèÑ Ï∂îÍ∞ÄÌïòÎ©¥ Ï¢ãÏùÑ ÎìØ.
+	case 'd':
+		puts("delete anyway");
+		tty_mode(1);
+
+		execvp(*arglist, arglist);
+
+		return;
+	}
 }
 
-int get_char(void) {
+int get_char(int flag) {
 	int ch;
 	int count = 0;
 
-	while (((ch = getchar()) != EOF)) {
-		if (strchr("yYnN", ch))
-			return ch;
-		else
-			puts("you can only enter y or n in any case\n\t-\tIt doesn't matter if it's capital letter or not.");
-		
-		if (++count >= MAXTRIES) {
-			puts("Shut down for security reasons.");
+	if (flag == 0) {
+		while (((ch = getchar()) != EOF)) {
+			if (strchr("yYnN", ch))
+				return ch;
+			else
+				puts("you can only enter y or n in any case\n\t-\tIt doesn't matter if it's capital letter or not.");
 
-			tty_mode(1);
-			exit(1);
+			if (++count >= MAXTRIES) {
+				puts("Shut down for security reasons.");
+
+				tty_mode(1);
+				exit(1);
+			}
+		}
+	}
+	else {
+		while (((ch = getchar()) != EOF)) {
+			if (strchr("dDtT", ch))
+				return ch;
+			else
+				puts("you can only enter d or t in any case\n\t-\tIt doesn't matter if it's capital letter or not.");
+
+			if (++count >= MAXTRIES) {
+				puts("Shut down for security reasons.");
+
+				tty_mode(1);
+				exit(1);
+			}
 		}
 	}
 }
 
 void handler(int signum) {
 	//tty_mode(1);
+	puts("");
 	puts("shutdown");
-	//ÌîÑÎ°úÏÑ∏Ïä§Î•º Ï¢ÖÎ£åÌïòÎ©¥ ÎçîÏù¥ÏÉÅ Ìú¥ÏßÄÌÜµÏùÑ ÏÇ¨Ïö©ÌïòÏßÄ Î™ªÌï©ÎãàÎã§.
-	//- Ìú¥ÏßÄÌÜµÏùÑ ÏÇ≠Ï†úÌïòÏãúÍ≤†ÏäµÎãàÍπå?
-	//		- yes : Ìú¥ÏßÄÌÜµ ÎîîÎ†âÌÜ†Î¶¨ Ï†ÑÏ≤¥ ÏÇ≠Ï†ú -> Îã§Ïãú ÌîÑÎ°úÏÑ∏Ïä§ Ïã§Ìñâ Ïãú Ìú¥ÏßÄÌÜµÏó¨Î∂Ä „Ñ¥„Ñ¥
-	//		- no : Ìú¥ÏßÄÌÜµ ÎîîÎ†âÌÜ†Î¶¨ Î≥¥Ï°¥ -> Îã§Ïãú ÌîÑÎ°úÏÑ∏Ïä§ Ïã§Ìñâ Ïãú Ìú¥ÏßÄÌÜµ Ïó¨Î∂Ä „Öá„Öá
+
+	//«¡∑ŒººΩ∫∏¶ ¡æ∑·«œ∏È ¥ı¿ÃªÛ »ﬁ¡ˆ≈Î¿ª ªÁøÎ«œ¡ˆ ∏¯«’¥œ¥Ÿ.
+	//- »ﬁ¡ˆ≈Î¿ª ªË¡¶«œΩ√∞⁄Ω¿¥œ±Ó?
+	//		- yes : »ﬁ¡ˆ≈Î µ∑∫≈‰∏Æ ¿¸√º ªË¡¶ -> ¥ŸΩ√ «¡∑ŒººΩ∫ Ω««‡ Ω√ »ﬁ¡ˆ≈Îø©∫Œ §§§§
+	//		- no : »ﬁ¡ˆ≈Î µ∑∫≈‰∏Æ ∫∏¡∏ -> ¥ŸΩ√ «¡∑ŒººΩ∫ Ω««‡ Ω√ »ﬁ¡ˆ≈Î ø©∫Œ §∑§∑
 	exit(1);
 }
 
 
+void trash_exec(void) {
 
+	int flag = check_the_trash();
 
-//___________________________//
-void printNowLocat()
-{
-	char nowloc[256];
+	if (flag == -1) {
+		tty_mode(0);
+		set_terminal();
+		get_response(MAXTRIES);
+		tty_mode(1);
+	}
+	else {
+		arglist[0] = "mv";
+		arglist[idx++] = TRASHPATH;
+		arglist[idx] = NULL;
 
-	getcwd(nowloc,256);
-
-        if(get_inode(".") == get_inode("..")){
-                printf("/");
-        }//for root dir
-
-        printpathto(get_inode("."));
-        printf("(^_^) ");
-
-	chdir(nowloc);
+		execvp(*arglist, arglist);
+	}
 }
-
-ino_t get_inode(char *fname)
-{
-        struct stat info;
-        if(stat(fname, &info) == -1){
-                fprintf(stderr, "Cannot stat ");
-                perror(fname);
-                exit(1);
-        }
-        return info.st_ino;
-}
-
-void printpathto(ino_t this_inode)
-{
-        ino_t my_inode;
-        char its_name[BUFSIZ];
-
-        if(get_inode("..") != this_inode)
-        {
-                chdir("..");
-                inum_to_name(this_inode, its_name, BUFSIZ);
-                my_inode = get_inode(".");
-                printpathto(my_inode);
-                printf("/%s", its_name);
-        }
-
-
-}
-
-void inum_to_name(ino_t inode_to_find, char *namebuf, int buflen)
-{
-        DIR *dir_ptr;
-        struct dirent *direntp;
-        dir_ptr = opendir(".");
-        if(dir_ptr == NULL){
-                perror(".");
-                exit(1);
-        }
-
-        while((direntp = readdir(dir_ptr)) != NULL)
-                if(direntp->d_ino == inode_to_find){
-                        strncpy(namebuf, direntp->d_name, buflen);
-                        namebuf[buflen-1] ='\0';
-                        closedir(dir_ptr);
-                        return;
-                }
-        fprintf(stderr, "error looking for inum %lu\n", inode_to_find);
-        //ino_t type is long unsigned int
-        exit(1);
-}
-//_______________________________// 
