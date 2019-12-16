@@ -45,9 +45,12 @@ char *path;
 		- empty issue : If an empty command is entered, segmentation fault is triggered.
 */
 int main(int argc, char *argv[]) {
-
+	
+//	int fd;
 	puts("Instructions");
 	printf("You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n - If there is no recycle bin, you can create it.\n - There are no additional options\n");
+	puts("");
+	printf("You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n - there are no additional options. \n");
 	puts("");
 	printf("You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n - There are additional options. \n");
 	puts("");
@@ -58,7 +61,7 @@ int main(int argc, char *argv[]) {
 	printf("You can end the process using SIGNAL");
 	puts("");
 	tty_mode(0);
-
+	int pid;
 	signal(SIGINT, handler);
 	signal(SIGKILL, SIG_DFL);
 	while (1) {
@@ -71,6 +74,18 @@ int main(int argc, char *argv[]) {
 
 		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
 			check_the_trash();
+		else if (!strcmp(argString,"~b")){
+			pid = fork();
+			if(pid>0){
+				wait(NULL);
+				mkdir(TRASHPATH, 0755);
+				puts("You have successfully flushed Recycle Bin.");
+			}
+			else{
+				execlp("rm","rm","-r",TRASHPATH,NULL);
+		                
+			}
+		}
 		
 		else {
 			make_arglist(argString);
@@ -81,9 +96,15 @@ int main(int argc, char *argv[]) {
 				char decision;
 				scanf("%c", &decision);
 
-				if (decision == 't') {
+				if (decision == 't') {			//이부분은 슈도코드
 					dirPath(getInode("."));		//path
+					//char *fname=arglist[1];		//두번째 인자가 파일이름이라 가정
+					//strcat(fname,"_PATH");		//파일이름에 _PATH 붙임
+					//fd=creat(TRASHPATH,0644);	//_PATH파일 생성
+					//write(fd,path,BUFSIZ);		//원래 경로값 path를 저장
 
+					//close(fd);
+					//execlp("mv",fname,TRASHPATH,NULL);	//mv 로 휴지통으로 옮김
 					//puts(path);			
 					/*
 					path를 pwd를 저장하는 file로 전달{
@@ -101,6 +122,13 @@ int main(int argc, char *argv[]) {
 					execvp(*arglist, arglist);		//delete anyway	
 			}
 			else if (!strcmp(*arglist, "re")) {		//recover
+				//strcat(arglist[1],"_PATH");		//이 부분은 슈도코드
+				
+				//fd=open(arglist[1],O_RDONLY);
+				//read(fd,path,BUFSIZ);
+				//close(fd);
+				//remove(arglist[1]);
+				//execlp("mv",fname,path,NULL);
 				//puts(argString);
 				/*
 				pwd file에서 복원할 file의 이름을 file structure array에서 비교하여 해당 file이 있을 시 pwd file에서
