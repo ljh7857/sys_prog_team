@@ -300,12 +300,18 @@ void handler(int signum) {
 //___________________________//
 void printNowLocat()
 {
+	char nowloc[256];
+
+	getcwd(nowloc,256);
+
         if(get_inode(".") == get_inode("..")){
                 printf("/");
         }//for root dir
 
         printpathto(get_inode("."));
         printf("(^_^) ");
+
+	chdir(nowloc);
 }
 
 ino_t get_inode(char *fname)
