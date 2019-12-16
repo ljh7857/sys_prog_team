@@ -74,6 +74,8 @@ int main(int argc, char *argv[]) {
 		char argString[BUFSIZ];
 		int idx = 0;
 		
+		int pid;
+		
 		//pwd
 		printNowLocat();
 
@@ -119,8 +121,20 @@ int main(int argc, char *argv[]) {
 				해당 경로에 file mv! (exec(mv))		
 				*/
 			}
-			else									//other options
-				execvp(*arglist, arglist);
+			else{									//other options
+				if( (pid = fork()) == -1)
+					oops("cannot fork", 1);
+				
+				if (pid > 0){
+					//execvp(*arglist, arglist);
+					wait(NULL);
+					continue;
+				}
+				else {
+					//continue;
+					execvp(*arglist, arglist);
+				}
+			}
 		}
 	}
 
