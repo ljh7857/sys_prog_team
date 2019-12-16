@@ -75,6 +75,7 @@ int main(int argc, char *argv[]) {
 		int idx = 0;
 		
 		int pid;
+		char wannago[256];
 		
 		//pwd
 		printNowLocat();
@@ -120,6 +121,11 @@ int main(int argc, char *argv[]) {
 				filecount 숫자번째 줄의 경로를 받아옴.
 				해당 경로에 file mv! (exec(mv))		
 				*/
+			}
+			else if (!strcmp(*arglist,  "cd")){
+				getcwd(wannago, 256);
+				strcpy(wannago, arglist[1]);
+				chdir(wannago);
 			}
 			else{									//other options
 				if( (pid = fork()) == -1)
