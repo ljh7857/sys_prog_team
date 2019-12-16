@@ -15,7 +15,7 @@
 #define MAXTRIES 3
 #define CAMPER "/home/camper"
 #define TRASHPATH "/home/camper/trash"
-#define oops(message,num) {	perror(message); exit(num);	}
+#define oops(message,num) {	perror(message); exit(num);	} 
 
 ino_t getInode(char *);
 void dirPath(ino_t);
@@ -51,17 +51,21 @@ void inum_to_name(ino_t, char*, int);
 */
 int main(int argc, char *argv[]) {
 
-	puts("Instructions");
-	printf("You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n - If there is no recycle bin, you can create it.\n - There are no additional options\n");
+
+	printf("####################################################################\n");
+	puts("| Instructions");
+	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
+	puts("| ");
+	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
+	puts("| ");
+	printf("| You can use the [ re ] command to restore files from the Recycle Bin.\n|  - There are no additional options.\n");
+	puts("| ");
+	printf("| Other commands and options are also supported.\n");
+	puts("| ");
+	printf("| You can end the process using SIGNAL");
 	puts("");
-	printf("You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n - There are additional options. \n");
-	puts("");
-	printf("You can use the [ re ] command to restore files from the Recycle Bin.\n - There are no additional options.\n");
-	puts("");
-	printf("Other commands and options are also supported.\n");
-	puts("");
-	printf("You can end the process using SIGNAL");
-	puts("");
+
+	printf("####################################################################\n\n");
 
 
 	signal(SIGINT, handler);
@@ -307,10 +311,10 @@ void printNowLocat()
         if(get_inode(".") == get_inode("..")){
                 printf("/");
         }//for root dir
-
-        printpathto(get_inode("."));
-        printf("(^_^) ");
-
+	else{
+        	printpathto(get_inode("."));
+	}
+	printf("(^_^) ");
 	chdir(nowloc);
 }
 
