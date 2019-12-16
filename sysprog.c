@@ -42,6 +42,8 @@ ino_t get_inode(char*);
 void printpathto(ino_t);
 void inum_to_name(ino_t, char*, int);
 
+char nowloc[256];
+
 
 /*	Topics to cover	
 		- chdir issue : Can not chdir with exec function. we should handle this 
@@ -88,7 +90,9 @@ int main(int argc, char *argv[]){
 
 		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
 			check_the_trash();
-		
+		else if(!strcmp(argString, "~!")){
+			
+		}
 		else {
 			make_arglist(argString);
 
@@ -115,12 +119,11 @@ int main(int argc, char *argv[]){
 					*/
 				}
 				else if (decision == 'd'){
-				        char nowloc[256];
-				        getcwd(nowloc,256);
 					strcat(nowloc, "/");		//not cpy...
 					strcat(nowloc, arglist[1]);
 					remove(nowloc);		//delete anyway
-					printf("removed: %s\n", nowloc);	
+					printf("removed: %s\n", nowloc);
+					fgetc(stdin);	//to rm \n
 				}
 			}
 			else if (!strcmp(*arglist, "re")) {		//recover
@@ -132,8 +135,6 @@ int main(int argc, char *argv[]){
 				*/
 			}
 			else if (!strcmp(*arglist,  "cd")){
-				
-				//getcwd(wannago, 256);
 				if (arglist[1] !=  NULL){
 					strcpy(wannago, arglist[1]);
 				}
@@ -339,8 +340,6 @@ void handler(int signum) {
 //___________________________//
 void printNowLocat()
 {
-	char nowloc[256];
-
 	getcwd(nowloc,256);
 
         if(get_inode(".") == get_inode("..")){
