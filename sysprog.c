@@ -43,6 +43,7 @@ void printpathto(ino_t);
 void inum_to_name(ino_t, char*, int);
 
 char nowloc[256];
+char befoloc[256];
 char rmflag = 0;
 
 /*	Topics to cover	
@@ -82,7 +83,7 @@ int main(int argc, char *argv[]){
 		//pwd
 		printNowLocat();
 		//istrashcan?
-		if(strcmp(nowdir, TRASHPATH) == 0){
+		if(strcmp(nowloc, TRASHPATH) == 0){
 			rmflag = 1;
 		}
 
@@ -94,10 +95,16 @@ int main(int argc, char *argv[]){
 
 		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
 			check_the_trash();
-		else if(!strcmp(argString, "~!")){
+		else if(!strcmp(argString, "~~")){
 			chdir(TRASHPATH);	
 		}
+		else if(!strcmp(argString, "~!")){
+			if(befoloc != NULL)
+				chdir(befoloc);
+		}
 		else {
+			strcpy(befoloc, nowloc);
+
 			make_arglist(argString);
 
 			if (!strcmp(*arglist, "rm")) {		//delete or trash
