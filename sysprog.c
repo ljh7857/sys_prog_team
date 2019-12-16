@@ -1,4 +1,4 @@
-#include<stdio.h>
+#include <stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<unistd.h>
@@ -29,17 +29,17 @@ void make_arglist(char *);
 void tty_mode(int);
 void set_terminal(void);
 void set_nodelay_mode(void);
-void get_response(int, int);
+void get_response(int,int);
 int get_char(void);
 
 void handler(int);
 
 char *arglist[BUFSIZ];
-char *filelist[BUFSIZ];		//»èÁ¦ fileµéÀÇ ÀÌ¸§À» ÀúÀåÇÒ ¹è¿­
+char *filelist[BUFSIZ];		//ì‚­ì œ fileë“¤ì˜ ì´ë¦„ì„ ì €ìž¥í•  ë°°ì—´
 char *path;
 
-/*	Topics to cover
-		- chdir issue : Can not chdir with exec function. we should handle this
+/*	Topics to cover	
+		- chdir issue : Can not chdir with exec function. we should handle this 
 		- pwd file issue : Should we Create pwd file to save path of current file? or there are other ways?
 		- Recycle Bin issue : We need to handle emptying the Recycle Bin and deleting files in the Recycle Bin.
 		- empty issue : If an empty command is entered, segmentation fault is triggered.
@@ -63,14 +63,15 @@ int main(int argc, char *argv[]) {
 	signal(SIGKILL, SIG_DFL);
 	while (1) {
 		char argString[BUFSIZ];
-		int idx = 0;
-
+		//int idx =0; ì•ˆì“´ë‹¤ê³  ê²½ê³ ë– ì„œ ì¼ë‹¨ ì£¼ì„ì²˜ë¦¬
 		fgets(argString, BUFSIZ, stdin);
+		if(argString[0]=='\n'||argString[0]==' ')
+			continue;
 		argString[strlen(argString) - 1] = '\0';
 
 		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
 			check_the_trash();
-
+		
 		else {
 			make_arglist(argString);
 
@@ -85,26 +86,26 @@ int main(int argc, char *argv[]) {
 
 					//puts(path);			
 					/*
-					path¸¦ pwd¸¦ ÀúÀåÇÏ´Â file·Î Àü´Þ{
-						file·Î´Â ÇÑÁÙ¿¡ ÇÏ³ª¾¿ º¸³¿.
-						»èÁ¦ÇÑ file Á¤º¸´Â file structure array¸¦ ¸¸µé¾î ÀúÀå.
+					pathë¥¼ pwdë¥¼ ì €ìž¥í•˜ëŠ” fileë¡œ ì „ë‹¬{
+						fileë¡œëŠ” í•œì¤„ì— í•˜ë‚˜ì”© ë³´ëƒ„.
+						ì‚­ì œí•œ file ì •ë³´ëŠ” file structure arrayë¥¼ ë§Œë“¤ì–´ ì €ìž¥. 
 							- filename, filenumber
 						}
-
+					
 					fork()
 					child - move to trash directory.(exec(mv)) if not exist trash directory, print error message and exit
 					parent - wait until child process exit(), delete the file that in current directory(exec(rm))
 					*/
 				}
-				else
+				else 
 					execvp(*arglist, arglist);		//delete anyway	
 			}
 			else if (!strcmp(*arglist, "re")) {		//recover
 				//puts(argString);
 				/*
-				pwd file¿¡¼­ º¹¿øÇÒ fileÀÇ ÀÌ¸§À» file structure array¿¡¼­ ºñ±³ÇÏ¿© ÇØ´ç fileÀÌ ÀÖÀ» ½Ã pwd file¿¡¼­
-				filecount ¼ýÀÚ¹øÂ° ÁÙÀÇ °æ·Î¸¦ ¹Þ¾Æ¿È.
-				ÇØ´ç °æ·Î¿¡ file mv! (exec(mv))
+				pwd fileì—ì„œ ë³µì›í•  fileì˜ ì´ë¦„ì„ file structure arrayì—ì„œ ë¹„êµí•˜ì—¬ í•´ë‹¹ fileì´ ìžˆì„ ì‹œ pwd fileì—ì„œ
+				filecount ìˆ«ìžë²ˆì§¸ ì¤„ì˜ ê²½ë¡œë¥¼ ë°›ì•„ì˜´.
+				í•´ë‹¹ ê²½ë¡œì— file mv! (exec(mv))		
 				*/
 			}
 			else									//other options
@@ -137,8 +138,8 @@ void check_the_trash(void) {
 
 	if (dir_info == NULL)
 		oops("open", 1);
-
-	while (dir_entry = readdir(dir_info)) {
+						//ì™œ ë°˜ë³µë¬¸?? ê²½ê³  ëœ¸-> ê´„í˜¸ í•˜ë‚˜ ë” ë„£ì–´ì„œ í•´ê²°
+	while((dir_entry=readdir(dir_info))) {
 		if (strcmp(dir_entry->d_name, "trash") == 0) {
 			puts("There is Recycle Bin");
 
@@ -149,7 +150,7 @@ void check_the_trash(void) {
 	tty_mode(0);
 	set_terminal();
 	set_nodelay_mode();
-	get_response(MAXTRIES, SLEEPTRIES);
+	get_response(MAXTRIES,SLEEPTRIES);
 	tty_mode(1);
 
 	closedir(dir_info);
@@ -236,37 +237,37 @@ void set_terminal(void) {
 
 	tcsetattr(0, TCSANOW, &ttystate);
 }
-void set_nodelay_mode(void) {
+void set_nodelay_mode(void){
 	int termflags;
-	termflags = fcntl(0, F_GETFL);
+	termflags=fcntl(0,F_GETFL);
 	termflags |= O_NDELAY;
-	fcntl(0, F_SETFL, termflags);
+	fcntl(0,F_SETFL,termflags);
 }
-void get_response(int tries, int sleeptry) {
+void get_response(int tries,int sleeptry) {
 	char response;
 
 	puts("There is no Recycle bin. Do you want to create it? y/n");
-	while (1) {
+	while(1){
 		sleep(SLEEPTIME);
 		response = tolower(get_char());
 
-		if (response == 'y') {
+		if(response == 'y') {
 			mkdir(TRASHPATH, 0755);
 			puts("You have successfully created Recycle Bin.");
-
+	
 			return;
 		}
-		if (response == 'n') {
+		if(response == 'n'){
 			puts("Do not create Recycle Bin");
 			return;
 		}
-		if (sleeptry-- == 0) {
+		if(sleeptry--==0){
 			printf("timeout\n");
 			return;
 		}
 		BEEP;
 	}
-	//½Ã°£¿¡ µû¸¥ º¸¾È»óÀÇ ÀÌÀ¯·Î Á¾·áµµ Ãß°¡ÇÏ¸é ÁÁÀ» µí.
+	//ì‹œê°„ì— ë”°ë¥¸ ë³´ì•ˆìƒì˜ ì´ìœ ë¡œ ì¢…ë£Œë„ ì¶”ê°€í•˜ë©´ ì¢‹ì„ ë“¯.
 }
 
 int get_char(void) {
@@ -278,7 +279,7 @@ int get_char(void) {
 			return ch;
 		else
 			puts("you can only enter y or n in any case\n\t-\tIt doesn't matter if it's capital letter or not.");
-
+		
 		if (++count >= MAXTRIES) {
 			puts("Shut down for security reasons.");
 
@@ -286,14 +287,16 @@ int get_char(void) {
 			exit(1);
 		}
 	}
+			//ë¦¬í„´ê°’ ì—†ë‹¤ê³  ê²½ê³ ë– ì„œ ì¼ë‹¨ ë„£ì—ˆìŒ
+	return 0;
 }
 
 void handler(int signum) {
 	tty_mode(1);
 	puts("shutdown");
-	//ÇÁ·Î¼¼½º¸¦ Á¾·áÇÏ¸é ´õÀÌ»ó ÈÞÁöÅëÀ» »ç¿ëÇÏÁö ¸øÇÕ´Ï´Ù.
-	//- ÈÞÁöÅëÀ» »èÁ¦ÇÏ½Ã°Ú½À´Ï±î?
-	//		- yes : ÈÞÁöÅë µð·ºÅä¸® ÀüÃ¼ »èÁ¦ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë¿©ºÎ ¤¤¤¤
-	//		- no : ÈÞÁöÅë µð·ºÅä¸® º¸Á¸ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë ¿©ºÎ ¤·¤·
+	//í”„ë¡œì„¸ìŠ¤ë¥¼ ì¢…ë£Œí•˜ë©´ ë”ì´ìƒ íœ´ì§€í†µì„ ì‚¬ìš©í•˜ì§€ ëª»í•©ë‹ˆë‹¤.
+	//- íœ´ì§€í†µì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?
+	//		- yes : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ì „ì²´ ì‚­ì œ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µì—¬ë¶€ ã„´ã„´
+	//		- no : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ë³´ì¡´ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µ ì—¬ë¶€ ã…‡ã…‡
 	exit(1);
 }
