@@ -43,7 +43,7 @@ void printpathto(ino_t);
 void inum_to_name(ino_t, char*, int);
 
 char nowloc[256];
-
+char rmflag = 0;
 
 /*	Topics to cover	
 		- chdir issue : Can not chdir with exec function. we should handle this 
@@ -78,9 +78,13 @@ int main(int argc, char *argv[]){
 		
 		int pid;
 		char wannago[256];
-		
+
 		//pwd
 		printNowLocat();
+		//istrashcan?
+		if(strcmp(nowdir, TRASHPATH) == 0){
+			rmflag = 1;
+		}
 
 		fgets(argString, BUFSIZ, stdin);
 		if(argString[0] == '\n' || argString[0] == ' ')
@@ -91,18 +95,23 @@ int main(int argc, char *argv[]){
 		if (!strcmp(argString, "~@")) 		//is exist the trash directory?
 			check_the_trash();
 		else if(!strcmp(argString, "~!")){
-			
+			chdir(TRASHPATH);	
 		}
 		else {
 			make_arglist(argString);
 
 			if (!strcmp(*arglist, "rm")) {		//delete or trash
 				puts("Do you want to delete the file? Or throw it in the trash?\n - delete : d, throw : t");
-
 				char decision = 't';
 				decision = fgetc(stdin);
-
-				if (decision == 't') {
+                                if (decision == 'd'){
+                                        strcat(nowloc, "/");            //not cpy...
+                                        strcat(nowloc, arglist[1]);
+                                        remove(nowloc);         //delete anyway
+                                        printf("removed: %s\n", nowloc);
+                                        fgetc(stdin);   //to rm \n
+                                }
+				else if (decision == 't') {
 					//dirPath(getInode("."));		//path
 
 					//puts(path);			
