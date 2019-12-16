@@ -32,8 +32,16 @@ int get_char(void);
 void handler(int);
 
 char *arglist[BUFSIZ];
-char *filelist[BUFSIZ];		//»èÁ¦ fileµéÀÇ ÀÌ¸§À» ÀúÀåÇÒ ¹è¿­
+char *filelist[BUFSIZ];		//ì‚­ì œ fileë“¤ì˜ ì´ë¦„ì„ ì €ìž¥í•  ë°°ì—´
 char *path;
+
+
+//í˜„ìœ„ì¹˜ ì •ë³´ë¥¼ ì¶œë ¥
+void printNowLocat();	//ì‰˜ì²˜ëŸ¼ í˜„ìž¬ ìœ„ì¹˜ë¥¼ ì¶œë ¥
+ino_t get_inode(char*);
+void printpathto(ino_t);
+void inum_to_name(ino_t, char*, int);
+
 
 /*	Topics to cover	
 		- chdir issue : Can not chdir with exec function. we should handle this 
@@ -61,6 +69,9 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		char argString[BUFSIZ];
 		int idx = 0;
+		
+		//pwd
+		printNowLocat();
 
 		fgets(argString, BUFSIZ, stdin);
 		argString[strlen(argString) - 1] = '\0';
@@ -82,13 +93,12 @@ int main(int argc, char *argv[]) {
 
 					//puts(path);			
 					/*
-					path¸¦ pwd¸¦ ÀúÀåÇÏ´Â file·Î Àü´Þ{
-						file·Î´Â ÇÑÁÙ¿¡ ÇÏ³ª¾¿ º¸³¿.
-						»èÁ¦ÇÑ file Á¤º¸´Â file structure array¸¦ ¸¸µé¾î ÀúÀå. 
+					pathë¥¼ pwdë¥¼ ì €ìž¥í•˜ëŠ” fileë¡œ ì „ë‹¬{
+						fileë¡œëŠ” í•œì¤„ì— í•˜ë‚˜ì”© ë³´ëƒ„.
+						ì‚­ì œí•œ file ì •ë³´ëŠ” file structure arrayë¥¼ ë§Œë“¤ì–´ ì €ìž¥. 
 							- filename, filenumber
 						}
 					
-
 					fork()
 					child - move to trash directory.(exec(mv)) if not exist trash directory, print error message and exit
 					parent - wait until child process exit(), delete the file that in current directory(exec(rm))
@@ -100,9 +110,9 @@ int main(int argc, char *argv[]) {
 			else if (!strcmp(*arglist, "re")) {		//recover
 				//puts(argString);
 				/*
-				pwd file¿¡¼­ º¹¿øÇÒ fileÀÇ ÀÌ¸§À» file structure array¿¡¼­ ºñ±³ÇÏ¿© ÇØ´ç fileÀÌ ÀÖÀ» ½Ã pwd file¿¡¼­
-				filecount ¼ýÀÚ¹øÂ° ÁÙÀÇ °æ·Î¸¦ ¹Þ¾Æ¿È.
-				ÇØ´ç °æ·Î¿¡ file mv! (exec(mv))		
+				pwd fileì—ì„œ ë³µì›í•  fileì˜ ì´ë¦„ì„ file structure arrayì—ì„œ ë¹„êµí•˜ì—¬ í•´ë‹¹ fileì´ ìžˆì„ ì‹œ pwd fileì—ì„œ
+				filecount ìˆ«ìžë²ˆì§¸ ì¤„ì˜ ê²½ë¡œë¥¼ ë°›ì•„ì˜´.
+				í•´ë‹¹ ê²½ë¡œì— file mv! (exec(mv))		
 				*/
 			}
 			else									//other options
@@ -252,7 +262,7 @@ void get_response(int tries) {
 
 		return;
 	}
-	//½Ã°£¿¡ µû¸¥ º¸¾È»óÀÇ ÀÌÀ¯·Î Á¾·áµµ Ãß°¡ÇÏ¸é ÁÁÀ» µí.
+	//ì‹œê°„ì— ë”°ë¥¸ ë³´ì•ˆìƒì˜ ì´ìœ ë¡œ ì¢…ë£Œë„ ì¶”ê°€í•˜ë©´ ì¢‹ì„ ë“¯.
 }
 
 int get_char(void) {
@@ -277,9 +287,80 @@ int get_char(void) {
 void handler(int signum) {
 	//tty_mode(1);
 	puts("shutdown");
-	//ÇÁ·Î¼¼½º¸¦ Á¾·áÇÏ¸é ´õÀÌ»ó ÈÞÁöÅëÀ» »ç¿ëÇÏÁö ¸øÇÕ´Ï´Ù.
-	//- ÈÞÁöÅëÀ» »èÁ¦ÇÏ½Ã°Ú½À´Ï±î?
-	//		- yes : ÈÞÁöÅë µð·ºÅä¸® ÀüÃ¼ »èÁ¦ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë¿©ºÎ ¤¤¤¤
-	//		- no : ÈÞÁöÅë µð·ºÅä¸® º¸Á¸ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë ¿©ºÎ ¤·¤·
+	//í”„ë¡œì„¸ìŠ¤ë¥¼ ì¢…ë£Œí•˜ë©´ ë”ì´ìƒ íœ´ì§€í†µì„ ì‚¬ìš©í•˜ì§€ ëª»í•©ë‹ˆë‹¤.
+	//- íœ´ì§€í†µì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?
+	//		- yes : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ì „ì²´ ì‚­ì œ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µì—¬ë¶€ ã„´ã„´
+	//		- no : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ë³´ì¡´ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µ ì—¬ë¶€ ã…‡ã…‡
 	exit(1);
 }
+
+
+
+
+//___________________________//
+void printNowLocat()
+{
+	char nowloc[256];
+
+	getcwd(nowloc,256);
+
+        if(get_inode(".") == get_inode("..")){
+                printf("/");
+        }//for root dir
+
+        printpathto(get_inode("."));
+        printf("(^_^) ");
+
+	chdir(nowloc);
+}
+
+ino_t get_inode(char *fname)
+{
+        struct stat info;
+        if(stat(fname, &info) == -1){
+                fprintf(stderr, "Cannot stat ");
+                perror(fname);
+                exit(1);
+        }
+        return info.st_ino;
+}
+
+void printpathto(ino_t this_inode)
+{
+        ino_t my_inode;
+        char its_name[BUFSIZ];
+
+        if(get_inode("..") != this_inode)
+        {
+                chdir("..");
+                inum_to_name(this_inode, its_name, BUFSIZ);
+                my_inode = get_inode(".");
+                printpathto(my_inode);
+                printf("/%s", its_name);
+        }
+
+
+}
+
+void inum_to_name(ino_t inode_to_find, char *namebuf, int buflen)
+{
+        DIR *dir_ptr;
+        struct dirent *direntp;
+        dir_ptr = opendir(".");
+        if(dir_ptr == NULL){
+                perror(".");
+                exit(1);
+        }
+
+        while((direntp = readdir(dir_ptr)) != NULL)
+                if(direntp->d_ino == inode_to_find){
+                        strncpy(namebuf, direntp->d_name, buflen);
+                        namebuf[buflen-1] ='\0';
+                        closedir(dir_ptr);
+                        return;
+                }
+        fprintf(stderr, "error looking for inum %lu\n", inode_to_find);
+        //ino_t type is long unsigned int
+        exit(1);
+}
+//_______________________________// 
