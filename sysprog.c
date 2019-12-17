@@ -13,8 +13,8 @@
 
 #define SLEEPTIME 2
 #define MAXTRIES 3
-#define CAMPERPATH "/home/ubuntu/jeongyeol/proj"			//camper
-#define TRASHPATH "/home/ubuntu/jeongyeol/proj/trash"		//camper/trash
+#define CAMPERPATH "/home/camper"			//camper
+#define TRASHPATH "/home/camper/trash"		//camper/trash
 #define oops(message,num) {	perror(message); exit(num);	} 
 
 int check_the_trash(void);
@@ -37,9 +37,9 @@ ino_t getInode(char *);
 void dirPath(ino_t);
 void subdirPath(ino_t, char *, int);
 
-void printNowLocat();	//½©Ã³·³ ÇöÀç À§Ä¡¸¦ Ãâ·Â
+void printNowLocat();	//ì‰˜ì²˜ëŸ¼ í˜„ìž¬ ìœ„ì¹˜ë¥¼ ì¶œë ¥
 
-void recover_trash_file();	//º¹±¸ÇÏ±â
+void recover_trash_file();	//ë³µêµ¬í•˜ê¸°
 
 char *path;
 char *arglist[BUFSIZ];
@@ -52,11 +52,11 @@ char now_locate[BUFSIZ];
 char before_locate[BUFSIZ];
 
 /*
-	- pwd issue : pwd file »ý¼º, ¾î¶² µð·ºÅä¸®¿¡ ÀÖ´Â fileÀÌ¶óµµ path¿Í filenameÀ» pwd.txt file¿¡ ÀúÀå.
-				- execvp»ç¿ëÀ¸·Î, trash µð·ºÅä¸®·Î move.
-				- but µÑ´Ù °°ÀÌ ¾È‰Î; ÀÌÀ¯´Â Àß ¸ð¸£°ÚÀ½.. °¢°¢ÀÇ µ¿ÀÛÀº Àß ¼öÇàµÊ.
-	- Recover : º¹¿ø ±¸Çö
-	- ÄÚµå ÇÕÄ¡±â..
+	- pwd issue : pwd file ìƒì„±, ì–´ë–¤ ë””ë ‰í† ë¦¬ì— ìžˆëŠ” fileì´ë¼ë„ pathì™€ filenameì„ pwd.txt fileì— ì €ìž¥.
+				- execvpì‚¬ìš©ìœ¼ë¡œ, trash ë””ë ‰í† ë¦¬ë¡œ move.
+				- but ë‘˜ë‹¤ ê°™ì´ ì•ˆÂ‰; ì´ìœ ëŠ” ìž˜ ëª¨ë¥´ê² ìŒ.. ê°ê°ì˜ ë™ìž‘ì€ ìž˜ ìˆ˜í–‰ë¨.
+	- Recover : ë³µì› êµ¬í˜„
+	- ì½”ë“œ í•©ì¹˜ê¸°..
 */
 int main(int argc, char *argv[]) {
 	tty_mode(0);
@@ -185,9 +185,9 @@ int main(int argc, char *argv[]) {
 
 				recover_trash_file();
 				/*
-				pwd file¿¡¼­ º¹¿øÇÒ fileÀÇ ÀÌ¸§À» file structure array¿¡¼­ ºñ±³ÇÏ¿© ÇØ´ç fileÀÌ ÀÖÀ» ½Ã pwd file¿¡¼­
-				filecount ¼ýÀÚ¹øÂ° ÁÙÀÇ °æ·Î¸¦ ¹Þ¾Æ¿È.
-				ÇØ´ç °æ·Î¿¡ file mv! (exec(mv))
+				pwd fileì—ì„œ ë³µì›í•  fileì˜ ì´ë¦„ì„ file structure arrayì—ì„œ ë¹„êµí•˜ì—¬ í•´ë‹¹ fileì´ ìžˆì„ ì‹œ pwd fileì—ì„œ
+				filecount ìˆ«ìžë²ˆì§¸ ì¤„ì˜ ê²½ë¡œë¥¼ ë°›ì•„ì˜´.
+				í•´ë‹¹ ê²½ë¡œì— file mv! (exec(mv))
 				*/
 			}
 			else if (!strcmp(*arglist, "cd")) {
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
 }
 
 void recover_trash_file() {
-	int i;
+	//int i;
 
 	char file_read[BUFSIZ];
 	char file_name[BUFSIZ];
@@ -230,7 +230,7 @@ void recover_trash_file() {
 
 	//re file1 file2
 	//pwd.txt
-	ssize_t size;
+	//ssize_t size;
 
 	make_pwd();
 	FILE *fp = fdopen(fd, "r");
@@ -299,7 +299,7 @@ int check_the_trash(void) {
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while (dir_entry = readdir(dir_info)) {
+	while ((dir_entry = readdir(dir_info))) {
 		if (strcmp(dir_entry->d_name, "trash") == 0) {
 			puts("There is Recycle Bin");
 
@@ -320,7 +320,7 @@ int check_the_file(void) {
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while (dir_entry = readdir(dir_info)) {
+	while ((dir_entry = readdir(dir_info))) {
 		if (strcmp(dir_entry->d_name, "pwd.txt") == 0) {
 			puts("There is pwd.txt");
 
@@ -445,6 +445,7 @@ char get_response(int tries) {
 
 		return response;
 	}
+	return 0;
 }
 
 void get_decision(int tries) {
@@ -531,6 +532,7 @@ int get_char(int flag_) {
 			}
 		}
 	}
+	return 0;
 }
 
 void handler(int signum) {
@@ -538,10 +540,10 @@ void handler(int signum) {
 	puts("");
 	puts("shutdown");
 
-	//ÇÁ·Î¼¼½º¸¦ Á¾·áÇÏ¸é ´õÀÌ»ó ÈÞÁöÅëÀ» »ç¿ëÇÏÁö ¸øÇÕ´Ï´Ù.
-	//- ÈÞÁöÅëÀ» »èÁ¦ÇÏ½Ã°Ú½À´Ï±î?
-	//		- yes : ÈÞÁöÅë µð·ºÅä¸® ÀüÃ¼ »èÁ¦ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë¿©ºÎ ¤¤¤¤
-	//		- no : ÈÞÁöÅë µð·ºÅä¸® º¸Á¸ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë ¿©ºÎ ¤·¤·
+	//í”„ë¡œì„¸ìŠ¤ë¥¼ ì¢…ë£Œí•˜ë©´ ë”ì´ìƒ íœ´ì§€í†µì„ ì‚¬ìš©í•˜ì§€ ëª»í•©ë‹ˆë‹¤.
+	//- íœ´ì§€í†µì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?
+	//		- yes : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ì „ì²´ ì‚­ì œ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µì—¬ë¶€ ã„´ã„´
+	//		- no : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ë³´ì¡´ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µ ì—¬ë¶€ ã…‡ã…‡
 	exit(1);
 }
 
@@ -581,7 +583,7 @@ void trash_exec(void) {
 
 void make_pwd(void) {
 	chdir(CAMPERPATH);
-	//pwd.txt fileÀ» ¸¸µé±ä ÇÔ.
+	//pwd.txt fileì„ ë§Œë“¤ê¸´ í•¨.
 
 	flag = check_the_file();
 
