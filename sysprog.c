@@ -11,58 +11,52 @@
 #include<sys/stat.h>
 #include<sys/wait.h>
 
-#define SLEEPTIME 1									//for nodelaymode, 1s
-#define SLEEPTRIES 5									//total 5s
-#define MAXTRIES 3									//allow only 3 miss infut
-#define CAMPERPATH "/home/camper/"			//camper
-#define TRASHPATH "/home/camper/trash"		//camper/trash
+#define SLEEPTIME 2
+#define MAXTRIES 3
+#define CAMPERPATH "/home/ubuntu/jeongyeol/proj"			//camper
+#define TRASHPATH "/home/ubuntu/jeongyeol/proj/trash"		//camper/trash
 #define oops(message,num) {	perror(message); exit(num);	} 
-#define BEEP putchar('\a');
 
-int check_the_trash(void);								//if there are trashbin dir??
+int check_the_trash(void);
 void trash_exec(void);
+void make_pwd(void);
 
-int check_the_file(void);								//check pwd.txt that store deleting files original PATH.
-void initial_arglist(void);								//initial arglist by NULL
-void make_arglist(char *);								//make arglist by argString that users input for exec()
+int check_the_file(void);
+void initial_arglist(void);
+void make_arglist(char *);
 
 void tty_mode(int);
 void set_terminal(void);
-char get_response(int,int);							// Handle user input for the ~@ option
+char get_response(int);
 void get_decision(int);
-int get_char(int);			// Handle user input for rm option
-void set_nodelay_mode(void);
-void handler(int);			//ctrl + c handler
+int get_char(int);
+
+void handler(int);
 
 ino_t getInode(char *);
 void dirPath(ino_t);
 void subdirPath(ino_t, char *, int);
 
-void printNowLocat();	//ì‰˜ì²˜ëŸ¼ í˜„ì¬ ìœ„ì¹˜ë¥¼ ì¶œë ¥
+void printNowLocat();	//½©Ã³·³ ÇöÀç À§Ä¡¸¦ Ãâ·Â
 
 char *path;
 char *arglist[BUFSIZ];
 char file_path[BUFSIZ];
 int idx;
-
-char nowloc[256];			//store current dir path
-char befoloc[256];			// use at ~! option
+int fd;
 
 /*
-	- pwd issue : pwd file ìƒì„±, ì–´ë–¤ ë””ë ‰í† ë¦¬ì— ìˆëŠ” fileì´ë¼ë„ pathì™€ filenameì„ pwd.txt fileì— ì €ì¥.
-				- execvpì‚¬ìš©ìœ¼ë¡œ, trash ë””ë ‰í† ë¦¬ë¡œ move.
-				- but ë‘˜ë‹¤ ê°™ì´ ì•ˆ; ì´ìœ ëŠ” ì˜ ëª¨ë¥´ê² ìŒ.. ê°ê°ì˜ ë™ì‘ì€ ì˜ ìˆ˜í–‰ë¨.
-	- Recover : ë³µì› êµ¬í˜„
-	- ì½”ë“œ í•©ì¹˜ê¸°..
+	- pwd issue : pwd file »ı¼º, ¾î¶² µğ·ºÅä¸®¿¡ ÀÖ´Â fileÀÌ¶óµµ path¿Í filenameÀ» pwd.txt file¿¡ ÀúÀå.
+				- execvp»ç¿ëÀ¸·Î, trash µğ·ºÅä¸®·Î move.
+				- but µÑ´Ù °°ÀÌ ¾È‰Î; ÀÌÀ¯´Â Àß ¸ğ¸£°ÚÀ½.. °¢°¢ÀÇ µ¿ÀÛÀº Àß ¼öÇàµÊ.
+	- Recover : º¹¿ø ±¸Çö
+	- ÄÚµå ÇÕÄ¡±â..
 */
 int main(int argc, char *argv[]) {
-	
-	tty_mode(0);					//save basic terminal mode
-	printf("--------------------------------------------------------------------------------\n");						//ui generate
+
+	printf("--------------------------------------------------------------------------------\n");
 	puts("| Instructions");
 	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
-	puts("| ");
-	printf("| You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n|  - there are no additional options. \n");
 	puts("| ");
 	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
 	puts("| ");
@@ -75,62 +69,37 @@ int main(int argc, char *argv[]) {
 
 	printf("--------------------------------------------------------------------------------\n\n");
 
-	signal(SIGINT, handler);							// hadler for ctrl + c
-	signal(SIGKILL, SIG_DFL);							
+	signal(SIGINT, handler);
+	signal(SIGKILL, SIG_DFL);
 	while (1) {
-		char argString[BUFSIZ];						//for save user command
-		//char wannago[256];	//ì•ˆì¨ì„œ ì£¼ì„ì²˜ë¦¬
+		char argString[BUFSIZ];
+		char wannago[256];
 
 		//pwd
-		printNowLocat();								//Print the current working directory
-		if(strcmp(nowloc, TRASHPATH))
-			strcpy(befoloc, nowloc);					//Save directory patn that before shortcut
+		printNowLocat();
 
-		fgets(argString, BUFSIZ, stdin);				// waiting for user input
-		if(argString[0] == '\n' || argString[0] == ' ')
-			continue;
+		fgets(argString, BUFSIZ, stdin);
+		argString[strlen(argString) - 1] = '\0';
 
-		argString[strlen(argString) - 1] = '\0';		// save NULL instead '\n'
-
-		if (!strcmp(argString, "~@")) {				//Options for creating a trashbin
+		if (!strcmp(argString, "~@")) {
 			int flag = check_the_trash();
 			char ch;
 			if (flag == -1) {
 				tty_mode(0);
 				set_terminal();
-				//set_nodelay_mode();
-				ch = get_response(MAXTRIES,SLEEPTRIES);		// manage y,n input
+				ch = get_response(MAXTRIES);
 				tty_mode(1);
 
-				if (ch == 'n') 
+				if (ch == 'n')
 					puts("If you don't create a Recycle Bin, you can't use the -t option");
-				else if(ch == 'y')
+				else
 					puts("Now you can send files to the Recycle Bin.");
 			}
 		}
-		else if(!strcmp(argString, "~~")){				//Options for the Trashbin dir Shortcut
-			chdir(TRASHPATH);
-		}//shortcut
-		else if(!strcmp(argString, "~!")){				//Return to the path before the shortcut
-			if(befoloc != NULL)
-				chdir(befoloc);
-		}
-		else if (!strcmp(argString,"~b")){				// Option for flush Trashbin
-			int pid_b;
-			pid_b = fork();
-			if(pid_b>0){
-				wait(NULL);
-				mkdir(TRASHPATH, 0755);
-				puts("You have successfully flushed Recycle Bin.");
-			}
-			else{
-				execlp("rm","rm","-r",TRASHPATH,NULL);             
-			}
-		
-		}//shortcut
+
 		else {
 			initial_arglist();
-			make_arglist(argString);			// make arglist for exec()
+			make_arglist(argString);
 
 			if (!strcmp(*arglist, "rm")) {		//delete or trash
 				int pid;
@@ -154,12 +123,12 @@ int main(int argc, char *argv[]) {
 			else if (!strcmp(*arglist, "re")) {		//recover
 				//puts(argString);
 				/*
-				pwd fileì—ì„œ ë³µì›í•  fileì˜ ì´ë¦„ì„ file structure arrayì—ì„œ ë¹„êµí•˜ì—¬ í•´ë‹¹ fileì´ ìˆì„ ì‹œ pwd fileì—ì„œ
-				filecount ìˆ«ìë²ˆì§¸ ì¤„ì˜ ê²½ë¡œë¥¼ ë°›ì•„ì˜´.
-				í•´ë‹¹ ê²½ë¡œì— file mv! (exec(mv))
+				pwd file¿¡¼­ º¹¿øÇÒ fileÀÇ ÀÌ¸§À» file structure array¿¡¼­ ºñ±³ÇÏ¿© ÇØ´ç fileÀÌ ÀÖÀ» ½Ã pwd file¿¡¼­
+				filecount ¼ıÀÚ¹øÂ° ÁÙÀÇ °æ·Î¸¦ ¹Ş¾Æ¿È.
+				ÇØ´ç °æ·Î¿¡ file mv! (exec(mv))
 				*/
 			}
-			else if (!strcmp(*arglist, "cd")) {		//handle cd error
+			else if (!strcmp(*arglist, "cd")) {
 				getcwd(file_path, BUFSIZ);
 				strcpy(file_path, arglist[1]);
 				chdir(file_path);
@@ -177,7 +146,6 @@ int main(int argc, char *argv[]) {
 				}
 				else {
 					execvp(*arglist, arglist);
-					break;//to kill the error execvp
 				}
 			}
 		}
@@ -187,7 +155,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-void make_arglist(char *argString) {				//make arglist by argString that users input.
+void make_arglist(char *argString) {
 	char *token;
 	char *delimiter = " ";
 
@@ -205,13 +173,13 @@ void make_arglist(char *argString) {				//make arglist by argString that users i
 	*/
 }
 
-void initial_arglist() {						//initial arglist by NULL
+void initial_arglist() {
 	for (int i = 0; i < BUFSIZ; i++)
 		arglist[i] = NULL;
 	idx = 0;
 }
 
-int check_the_trash(void) {			//check there is trashbin dir in certain PATH.
+int check_the_trash(void) {
 	DIR *dir_info;
 	struct dirent *dir_entry;
 
@@ -220,7 +188,7 @@ int check_the_trash(void) {			//check there is trashbin dir in certain PATH.
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while ((dir_entry = readdir(dir_info))) {
+	while (dir_entry = readdir(dir_info)) {
 		if (strcmp(dir_entry->d_name, "trash") == 0) {
 			puts("There is Recycle Bin");
 
@@ -232,7 +200,7 @@ int check_the_trash(void) {			//check there is trashbin dir in certain PATH.
 	return -1;
 }
 
-int check_the_file(void) {						//check pwd.txt that store deleting files original PATH.
+int check_the_file(void) {
 	DIR *dir_info;
 	struct dirent *dir_entry;
 
@@ -241,7 +209,7 @@ int check_the_file(void) {						//check pwd.txt that store deleting files origin
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while ((dir_entry = readdir(dir_info))) {
+	while (dir_entry = readdir(dir_info)) {
 		if (strcmp(dir_entry->d_name, "pwd.txt") == 0) {
 			puts("There is pwd.txt");
 
@@ -258,7 +226,7 @@ int check_the_file(void) {						//check pwd.txt that store deleting files origin
 }
 
 
-ino_t getInode(char *filename) {					// get_inode
+ino_t getInode(char *filename) {
 	struct stat info;
 
 	if (stat(filename, &info) == -1) {
@@ -270,7 +238,7 @@ ino_t getInode(char *filename) {					// get_inode
 	return info.st_ino;
 }
 
-void dirPath(ino_t st_ino) {			//printpathto
+void dirPath(ino_t st_ino) {
 	ino_t inode;
 	char locate[BUFSIZ];
 
@@ -285,7 +253,7 @@ void dirPath(ino_t st_ino) {			//printpathto
 	}
 }
 
-void subdirPath(ino_t st_ino, char *string, int length) {		//inum_to_name
+void subdirPath(ino_t st_ino, char *string, int length) {
 	DIR *dir_ptr;
 	struct dirent *direntp;
 
@@ -312,8 +280,8 @@ void subdirPath(ino_t st_ino, char *string, int length) {		//inum_to_name
 	exit(1);
 }
 
-void printNowLocat() {						//notify user current directory
-	//char nowloc[256];//ì „ì—­
+void printNowLocat() {
+	char nowloc[256];
 
 	getcwd(nowloc, 256);
 
@@ -327,7 +295,7 @@ void printNowLocat() {						//notify user current directory
 	chdir(nowloc);
 }
 
-void tty_mode(int how) {						// save or rollback ttymode
+void tty_mode(int how) {
 	static struct termios original_mode;
 
 	if (how == 0)
@@ -336,7 +304,7 @@ void tty_mode(int how) {						// save or rollback ttymode
 		tcsetattr(0, TCSANOW, &original_mode);
 }
 
-void set_terminal(void) {						// set terminal mode
+void set_terminal(void) {
 	struct termios ttystate;
 
 	tcgetattr(0, &ttystate);
@@ -347,46 +315,33 @@ void set_terminal(void) {						// set terminal mode
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
-char get_response(int tries,int sleeptry) {				// Handle user input for the ~@ option
+char get_response(int tries) {
 	char response;
+
 	puts("There is no Recycle bin. Do you want to create it? y/n");
+	response = tolower(get_char(0));
 
-	while(1){
-	//	sleep(SLEEPTIME);
-		response = tolower(get_char(0));
-	
-       		 if(response == 'y'){
-                mkdir(TRASHPATH, 0755);
-                puts("You have successfully created!");
-                puts("Now you can send files to the Recycle Bin.");
-                return response;
-		}
-      		  if(response== 'n'){
-//                puts("Do not create Recycle Bin");
+	switch (response) {
+	case 'y':
+		mkdir(TRASHPATH, 0755);
+		make_pwd();
 
-                return response;
-       		 }
-		
-	/*	if(sleeptry--==0){
-			printf("timeout\n");
-			return 'p';
-		}
-		BEEP;*/
+		puts("You have successfully created!");
+		puts("Now you can send files to the Recycle Bin.");
+
+		return response;
+
+	case 'n':
+		puts("Do not create Recycle Bin");
+
+		return response;
 	}
 }
 
-
-
-void set_nodelay_mode(void){							//for timeout operation
-	int termflags;
-	termflags=fcntl(0,F_GETFL);
-	termflags |= O_NDELAY;
-	fcntl(0,F_SETFL,termflags);
-}
-void get_decision(int tries) {							// handle rm command's option
+void get_decision(int tries) {
 	char decision;
-	int fd;
-	//int wr;	//ì•ˆì¨ì„œ ì£¼ì„ì²˜ë¦¬
+
+	int wr;
 
 	puts("Do you want to delete the file? Or throw it in the trash?\n - delete : d, throw : t");
 
@@ -394,53 +349,33 @@ void get_decision(int tries) {							// handle rm command's option
 
 	switch (decision) {
 	case 't': {
-		getcwd(file_path, BUFSIZ);
-		puts(file_path);		//file_path
-		
-		//chdirì„ ì“°ì§€ì•Šê³ , file ë§Œë“¤ê¸°..?
-		chdir(CAMPERPATH);
-		//pwd.txt fileì„ ë§Œë“¤ê¸´ í•¨.
-
 		tty_mode(1);
 
-		int flag = check_the_file();
-		if (flag == -1) {
-			//creat
-			if ((fd = creat("pwd.txt", 0644)) == -1) {
-				tty_mode(1);
-				oops("create", 1);
-			}
-		}
-		else {
-			if ((fd = open("pwd.txt", O_RDWR | O_APPEND, S_IWUSR | S_IRUSR)) == -1) {
-				tty_mode(1);
-				oops("open", 1);
-			}
-		}
-		chdir(file_path);
+		getcwd(file_path, BUFSIZ);
+		puts(file_path);		//file_path
 
-		/*
+		trash_exec();
+
+		//chdir(file_path);
 		char temp_string[BUFSIZ];
-		for (int i = 1; i <= idx; i++) {
-			if (*arglist[i] == '-')
-				continue;
-			else{
+		printf("idx : %d\n", idx);
+		for (int i = 1; i < idx - 1; i++) {
+			if (*arglist[i] != '-') {
 				strcpy(temp_string, arglist[i]);
-				//printf("arglist[%d] : %s\n", i, arglist[i]);
+				printf("arglist[%d] : %s\n", i, arglist[i]);
+
 				strcat(temp_string, " ");
 				strcat(temp_string, file_path);
 				temp_string[strlen(temp_string)] = '\n';
-				//printf("temp_string : %s\n", temp_string);
+
+				printf("temp_string : %s\n", temp_string);
+
 				if ((wr = write(fd, temp_string, strlen(temp_string))) == -1) {
 					tty_mode(1);
 					oops("write", 1);
 				}
 			}
 		}
-		*/
-		
-		///ì´ê±° ì´í›„ì—ëŠ” ì™œ ì‹¤í–‰ì•ˆë˜ëƒ..
-		trash_exec();
 
 		tty_mode(1);
 
@@ -456,7 +391,7 @@ void get_decision(int tries) {							// handle rm command's option
 	}
 }
 
-int get_char(int flag) {						// Handle user input for rm option
+int get_char(int flag) {
 	int ch;
 	int count = 0;
 
@@ -476,7 +411,7 @@ int get_char(int flag) {						// Handle user input for rm option
 		}
 	}
 	else {
-		while (((ch = getchar()) != EOF)) {	
+		while (((ch = getchar()) != EOF)) {
 			if (strchr("dDtT", ch))
 				return ch;
 			else
@@ -490,30 +425,28 @@ int get_char(int flag) {						// Handle user input for rm option
 			}
 		}
 	}
-	return 0;
 }
 
-void handler(int signum) {							// ctrl + c handler
-	tty_mode(1);
+void handler(int signum) {
+	//tty_mode(1);
 	puts("");
 	puts("shutdown");
 
-	//í”„ë¡œì„¸ìŠ¤ë¥¼ ì¢…ë£Œí•˜ë©´ ë”ì´ìƒ íœ´ì§€í†µì„ ì‚¬ìš©í•˜ì§€ ëª»í•©ë‹ˆë‹¤.
-	//- íœ´ì§€í†µì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?
-	//		- yes : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ì „ì²´ ì‚­ì œ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µì—¬ë¶€ ã„´ã„´
-	//		- no : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ë³´ì¡´ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µ ì—¬ë¶€ ã…‡ã…‡
+	//ÇÁ·Î¼¼½º¸¦ Á¾·áÇÏ¸é ´õÀÌ»ó ÈŞÁöÅëÀ» »ç¿ëÇÏÁö ¸øÇÕ´Ï´Ù.
+	//- ÈŞÁöÅëÀ» »èÁ¦ÇÏ½Ã°Ú½À´Ï±î?
+	//		- yes : ÈŞÁöÅë µğ·ºÅä¸® ÀüÃ¼ »èÁ¦ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈŞÁöÅë¿©ºÎ ¤¤¤¤
+	//		- no : ÈŞÁöÅë µğ·ºÅä¸® º¸Á¸ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈŞÁöÅë ¿©ºÎ ¤·¤·
 	exit(1);
 }
 
 
-void trash_exec(void) {						
-
+void trash_exec(void) {
 	int flag = check_the_trash();
 
 	if (flag == -1) {
 		tty_mode(0);
 		set_terminal();
-		get_response(MAXTRIES,SLEEPTRIES);
+		get_response(MAXTRIES);
 		tty_mode(1);
 	}
 	else {
@@ -521,6 +454,43 @@ void trash_exec(void) {
 		arglist[idx++] = TRASHPATH;
 		arglist[idx] = NULL;
 
-		execvp(*arglist, arglist);
+		int pid = 0;
+
+		if ((pid = fork()) == -1)
+			oops("fork", -1);
+
+		if (pid > 0) {
+			wait(NULL);
+			//exit(0);
+
+			return;
+		}
+		else {
+			execvp(*arglist, arglist);
+
+			oops("execvp", 1);
+		}
 	}
+}
+
+void make_pwd(void) {
+	chdir(CAMPERPATH);
+	//pwd.txt fileÀ» ¸¸µé±ä ÇÔ.
+
+	int flag = check_the_file();
+
+	if (flag == -1) {
+		//creat
+		if ((fd = creat("pwd.txt", 0644)) == -1) {
+			tty_mode(1);
+			oops("create", 1);
+		}
+	}
+	else {
+		if ((fd = open("pwd.txt", O_RDWR | O_APPEND, S_IWUSR | S_IRUSR)) == -1) {
+			tty_mode(1);
+			oops("open", 1);
+		}
+	}
+	chdir(file_path);
 }
