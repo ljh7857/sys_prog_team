@@ -13,8 +13,8 @@
 
 #define SLEEPTIME 2
 #define MAXTRIES 3
-#define CAMPERPATH "/home/ubuntu/jeongyeol/proj"			//camper
-#define TRASHPATH "/home/ubuntu/jeongyeol/proj/trash"		//camper/trash
+#define CAMPERPATH "/home/camper/"			//camper
+#define TRASHPATH "/home/camper/trash"		//camper/trash
 #define oops(message,num) {	perror(message); exit(num);	} 
 
 int check_the_trash(void);
@@ -36,7 +36,7 @@ ino_t getInode(char *);
 void dirPath(ino_t);
 void subdirPath(ino_t, char *, int);
 
-void printNowLocat();	//½©Ã³·³ ÇöÀç À§Ä¡¸¦ Ãâ·Â
+void printNowLocat();	//ì‰˜ì²˜ëŸ¼ í˜„ìž¬ ìœ„ì¹˜ë¥¼ ì¶œë ¥
 
 char *path;
 char *arglist[BUFSIZ];
@@ -44,11 +44,11 @@ char file_path[BUFSIZ];
 int idx;
 
 /*
-	- pwd issue : pwd file »ý¼º, ¾î¶² µð·ºÅä¸®¿¡ ÀÖ´Â fileÀÌ¶óµµ path¿Í filenameÀ» pwd.txt file¿¡ ÀúÀå.
-				- execvp»ç¿ëÀ¸·Î, trash µð·ºÅä¸®·Î move.
-				- but µÑ´Ù °°ÀÌ ¾È‰Î; ÀÌÀ¯´Â Àß ¸ð¸£°ÚÀ½.. °¢°¢ÀÇ µ¿ÀÛÀº Àß ¼öÇàµÊ.
-	- Recover : º¹¿ø ±¸Çö
-	- ÄÚµå ÇÕÄ¡±â..
+	- pwd issue : pwd file ìƒì„±, ì–´ë–¤ ë””ë ‰í† ë¦¬ì— ìžˆëŠ” fileì´ë¼ë„ pathì™€ filenameì„ pwd.txt fileì— ì €ìž¥.
+				- execvpì‚¬ìš©ìœ¼ë¡œ, trash ë””ë ‰í† ë¦¬ë¡œ move.
+				- but ë‘˜ë‹¤ ê°™ì´ ì•ˆÂ‰; ì´ìœ ëŠ” ìž˜ ëª¨ë¥´ê² ìŒ.. ê°ê°ì˜ ë™ìž‘ì€ ìž˜ ìˆ˜í–‰ë¨.
+	- Recover : ë³µì› êµ¬í˜„
+	- ì½”ë“œ í•©ì¹˜ê¸°..
 */
 int main(int argc, char *argv[]) {
 
@@ -77,6 +77,9 @@ int main(int argc, char *argv[]) {
 		printNowLocat();
 
 		fgets(argString, BUFSIZ, stdin);
+		if(argString[0] == '\n' || argString[0] == ' ')
+			continue;
+
 		argString[strlen(argString) - 1] = '\0';
 
 		if (!strcmp(argString, "~@")) {
@@ -121,9 +124,9 @@ int main(int argc, char *argv[]) {
 			else if (!strcmp(*arglist, "re")) {		//recover
 				//puts(argString);
 				/*
-				pwd file¿¡¼­ º¹¿øÇÒ fileÀÇ ÀÌ¸§À» file structure array¿¡¼­ ºñ±³ÇÏ¿© ÇØ´ç fileÀÌ ÀÖÀ» ½Ã pwd file¿¡¼­
-				filecount ¼ýÀÚ¹øÂ° ÁÙÀÇ °æ·Î¸¦ ¹Þ¾Æ¿È.
-				ÇØ´ç °æ·Î¿¡ file mv! (exec(mv))
+				pwd fileì—ì„œ ë³µì›í•  fileì˜ ì´ë¦„ì„ file structure arrayì—ì„œ ë¹„êµí•˜ì—¬ í•´ë‹¹ fileì´ ìžˆì„ ì‹œ pwd fileì—ì„œ
+				filecount ìˆ«ìžë²ˆì§¸ ì¤„ì˜ ê²½ë¡œë¥¼ ë°›ì•„ì˜´.
+				í•´ë‹¹ ê²½ë¡œì— file mv! (exec(mv))
 				*/
 			}
 			else if (!strcmp(*arglist, "cd")) {
@@ -347,9 +350,9 @@ void get_decision(int tries) {
 		getcwd(file_path, BUFSIZ);
 		puts(file_path);		//file_path
 		
-		//chdirÀ» ¾²Áö¾Ê°í, file ¸¸µé±â..?
+		//chdirì„ ì“°ì§€ì•Šê³ , file ë§Œë“¤ê¸°..?
 		chdir(CAMPERPATH);
-		//pwd.txt fileÀ» ¸¸µé±ä ÇÔ.
+		//pwd.txt fileì„ ë§Œë“¤ê¸´ í•¨.
 
 		tty_mode(1);
 
@@ -377,13 +380,10 @@ void get_decision(int tries) {
 			else{
 				strcpy(temp_string, arglist[i]);
 				//printf("arglist[%d] : %s\n", i, arglist[i]);
-
 				strcat(temp_string, " ");
 				strcat(temp_string, file_path);
 				temp_string[strlen(temp_string)] = '\n';
-
 				//printf("temp_string : %s\n", temp_string);
-
 				if ((wr = write(fd, temp_string, strlen(temp_string))) == -1) {
 					tty_mode(1);
 					oops("write", 1);
@@ -392,7 +392,7 @@ void get_decision(int tries) {
 		}
 		*/
 		
-		///ÀÌ°Å ÀÌÈÄ¿¡´Â ¿Ö ½ÇÇà¾ÈµÇ³Ä..
+		///ì´ê±° ì´í›„ì—ëŠ” ì™œ ì‹¤í–‰ì•ˆë˜ëƒ..
 		trash_exec();
 
 		tty_mode(1);
@@ -450,10 +450,10 @@ void handler(int signum) {
 	puts("");
 	puts("shutdown");
 
-	//ÇÁ·Î¼¼½º¸¦ Á¾·áÇÏ¸é ´õÀÌ»ó ÈÞÁöÅëÀ» »ç¿ëÇÏÁö ¸øÇÕ´Ï´Ù.
-	//- ÈÞÁöÅëÀ» »èÁ¦ÇÏ½Ã°Ú½À´Ï±î?
-	//		- yes : ÈÞÁöÅë µð·ºÅä¸® ÀüÃ¼ »èÁ¦ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë¿©ºÎ ¤¤¤¤
-	//		- no : ÈÞÁöÅë µð·ºÅä¸® º¸Á¸ -> ´Ù½Ã ÇÁ·Î¼¼½º ½ÇÇà ½Ã ÈÞÁöÅë ¿©ºÎ ¤·¤·
+	//í”„ë¡œì„¸ìŠ¤ë¥¼ ì¢…ë£Œí•˜ë©´ ë”ì´ìƒ íœ´ì§€í†µì„ ì‚¬ìš©í•˜ì§€ ëª»í•©ë‹ˆë‹¤.
+	//- íœ´ì§€í†µì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?
+	//		- yes : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ì „ì²´ ì‚­ì œ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µì—¬ë¶€ ã„´ã„´
+	//		- no : íœ´ì§€í†µ ë””ë ‰í† ë¦¬ ë³´ì¡´ -> ë‹¤ì‹œ í”„ë¡œì„¸ìŠ¤ ì‹¤í–‰ ì‹œ íœ´ì§€í†µ ì—¬ë¶€ ã…‡ã…‡
 	exit(1);
 }
 
