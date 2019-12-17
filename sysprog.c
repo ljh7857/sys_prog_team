@@ -44,6 +44,10 @@ char *arglist[BUFSIZ];
 char file_path[BUFSIZ];
 int idx;
 int fd;
+int flag;
+
+char now_locate[BUFSIZ];
+char before_locate[BUFSIZ];
 
 /*
 	- pwd issue : pwd file 생성, 어떤 디렉토리에 있는 file이라도 path와 filename을 pwd.txt file에 저장.
@@ -53,10 +57,16 @@ int fd;
 	- 코드 합치기..
 */
 int main(int argc, char *argv[]) {
-
+	tty_mode(0);
 	printf("--------------------------------------------------------------------------------\n");
 	puts("| Instructions");
 	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
+	puts("| ");
+	printf("| You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n| - there are no additional options. \n");
+	puts("| ");
+	printf("| You can use the [ ~~ ] command to go to the Recycle Bin shortcut.\n| - there are no additional options. \n");
+	puts("| ");
+	printf("| You can use the [ ~! ] command to Return to the path before the Recycle Bin shortcut.\n| - there are no additional options. \n");
 	puts("| ");
 	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
 	puts("| ");
@@ -78,11 +88,14 @@ int main(int argc, char *argv[]) {
 		//pwd
 		printNowLocat();
 
+		if (strcmp(now_locate, TRASHPATH))
+			strcpy(before_locate, now_locate);		//Save directory patn that before shortcut
+
 		fgets(argString, BUFSIZ, stdin);
 		argString[strlen(argString) - 1] = '\0';
 
 		if (!strcmp(argString, "~@")) {
-			int flag = check_the_trash();
+			flag = check_the_trash();
 			char ch;
 			if (flag == -1) {
 				tty_mode(0);
@@ -96,7 +109,41 @@ int main(int argc, char *argv[]) {
 					puts("Now you can send files to the Recycle Bin.");
 			}
 		}
+		else if (!strcmp(argString, "~~")) {	 //Options for the Trashbin dir Shortcut
+			flag = check_the_trash();
+			if (flag == -1) {
+				puts("You must first create a recycle bin");
 
+				continue;
+			}
+			else
+				chdir(TRASHPATH);
+		}		//shortcut
+		else if (!strcmp(argString, "~!")) {	//Return to the path before the shortcut
+			if (before_locate != NULL)
+				chdir(before_locate);
+		}
+		else if (!strcmp(argString, "~b")) { // Option for flush Trashbin
+			flag = check_the_trash();
+
+			if (flag == -1) {
+				puts("You must first create a recycle bin");
+
+				continue;
+			}
+			else {
+				int pid_b;
+				pid_b = fork();
+				if (pid_b > 0) {
+					wait(NULL);
+					mkdir(TRASHPATH, 0755);
+					puts("You have successfully flushed Recycle Bin.");
+				}
+				else {
+					execlp("rm", "rm", "-r", TRASHPATH, NULL);
+				}
+			}
+		}
 		else {
 			initial_arglist();
 			make_arglist(argString);
@@ -281,9 +328,8 @@ void subdirPath(ino_t st_ino, char *string, int length) {
 }
 
 void printNowLocat() {
-	char nowloc[256];
 
-	getcwd(nowloc, 256);
+	getcwd(now_locate, BUFSIZ);
 
 	if (getInode(".") == getInode("..")) {
 		printf("/");
@@ -292,7 +338,7 @@ void printNowLocat() {
 	dirPath(getInode("."));
 	printf("(^_^) : ");
 
-	chdir(nowloc);
+	chdir(now_locate);
 }
 
 void tty_mode(int how) {
@@ -391,11 +437,11 @@ void get_decision(int tries) {
 	}
 }
 
-int get_char(int flag) {
+int get_char(int flag_) {
 	int ch;
 	int count = 0;
 
-	if (flag == 0) {
+	if (flag_ == 0) {
 		while (((ch = getchar()) != EOF)) {
 			if (strchr("yYnN", ch))
 				return ch;
@@ -428,7 +474,7 @@ int get_char(int flag) {
 }
 
 void handler(int signum) {
-	//tty_mode(1);
+	tty_mode(1);
 	puts("");
 	puts("shutdown");
 
@@ -441,7 +487,7 @@ void handler(int signum) {
 
 
 void trash_exec(void) {
-	int flag = check_the_trash();
+	flag = check_the_trash();
 
 	if (flag == -1) {
 		tty_mode(0);
@@ -477,7 +523,7 @@ void make_pwd(void) {
 	chdir(CAMPERPATH);
 	//pwd.txt file을 만들긴 함.
 
-	int flag = check_the_file();
+	flag = check_the_file();
 
 	if (flag == -1) {
 		//creat
