@@ -494,7 +494,7 @@ int get_char(int flag) {
 }
 
 void handler(int signum) {
-	//tty_mode(1);
+	tty_mode(1);
 	puts("");
 	puts("shutdown");
 
