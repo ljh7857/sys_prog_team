@@ -11,11 +11,13 @@
 #include<sys/stat.h>
 #include<sys/wait.h>
 
-#define SLEEPTIME 2
+#define SLEEPTIME 1
+#define SLEEPTRIES 5
 #define MAXTRIES 3
 #define CAMPERPATH "/home/camper/"			//camper
 #define TRASHPATH "/home/camper/trash"		//camper/trash
 #define oops(message,num) {	perror(message); exit(num);	} 
+#define BEEP putchar('\a');
 
 int check_the_trash(void);
 void trash_exec(void);
@@ -26,10 +28,10 @@ void make_arglist(char *);
 
 void tty_mode(int);
 void set_terminal(void);
-char get_response(int);
+char get_response(int,int);
 void get_decision(int);
 int get_char(int);
-
+void set_nodelay_mode(void);
 void handler(int);
 
 ino_t getInode(char *);
@@ -49,16 +51,19 @@ char befoloc[256];
 /*
 	- pwd issue : pwd file 생성, 어떤 디렉토리에 있는 file이라도 path와 filename을 pwd.txt file에 저장.
 				- execvp사용으로, trash 디렉토리로 move.
-				- but 둘다 같이 안; 이유는 잘 모르겠음.. 각각의 동작은 잘 수행됨.
+				- but 둘다 같이 안; 이유는 잘 모르겠음.. 각각의 동작은 잘 수행됨.
 	- Recover : 복원 구현
 	- 코드 합치기..
 */
 int main(int argc, char *argv[]) {
-
+	int pid;
+	tty_mode(0);
 	printf("--------------------------------------------------------------------------------\n");
 	puts("| Instructions");
 	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
 	puts("| ");
+	printf("You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n - there are no additional options. \n");
+	puts("");
 	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
 	puts("| ");
 	printf("| You can use the [ re ] command to restore files from the Recycle Bin. \n|  - There are no additional options.\n");
@@ -74,7 +79,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGKILL, SIG_DFL);
 	while (1) {
 		char argString[BUFSIZ];
-		char wannago[256];
+		//char wannago[256];	//안써서 주석처리
 
 		//pwd
 		printNowLocat();
@@ -93,12 +98,13 @@ int main(int argc, char *argv[]) {
 			if (flag == -1) {
 				tty_mode(0);
 				set_terminal();
-				ch = get_response(MAXTRIES);
+				//set_nodelay_mode();
+				ch = get_response(MAXTRIES,SLEEPTRIES);
 				tty_mode(1);
 
 				if (ch == 'n') 
 					puts("If you don't create a Recycle Bin, you can't use the -t option");
-				else
+				else if(ch == 'y')
 					puts("Now you can send files to the Recycle Bin.");
 			}
 		}
@@ -108,6 +114,19 @@ int main(int argc, char *argv[]) {
 		else if(!strcmp(argString, "~!")){
 			if(befoloc != NULL)
 				chdir(befoloc);
+		}
+		else if (!strcmp(argString,"~b")){
+			pid = fork();
+			if(pid>0){
+				wait(NULL);
+				mkdir(TRASHPATH, 0755);
+				puts("You have successfully flushed Recycle Bin.");
+			}
+			else{
+				execlp("rm","rm","-r",TRASHPATH,NULL);
+		                
+			}
+		
 		}//shortcut
 		else {
 			initial_arglist();
@@ -201,7 +220,7 @@ int check_the_trash(void) {
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while (dir_entry = readdir(dir_info)) {
+	while ((dir_entry = readdir(dir_info))) {
 		if (strcmp(dir_entry->d_name, "trash") == 0) {
 			puts("There is Recycle Bin");
 
@@ -222,7 +241,7 @@ int check_the_file(void) {
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while (dir_entry = readdir(dir_info)) {
+	while ((dir_entry = readdir(dir_info))) {
 		if (strcmp(dir_entry->d_name, "pwd.txt") == 0) {
 			puts("There is pwd.txt");
 
@@ -328,30 +347,46 @@ void set_terminal(void) {
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
-char get_response(int tries) {
+char get_response(int tries,int sleeptry) {
 	char response;
-
 	puts("There is no Recycle bin. Do you want to create it? y/n");
-	response = tolower(get_char(0));
 
-	switch (response) {
-	case 'y':
-		mkdir(TRASHPATH, 0755);
-		puts("You have successfully created!");
-		puts("Now you can send files to the Recycle Bin.");
-		return response;
+	while(1){
+	//	sleep(SLEEPTIME);
+		response = tolower(get_char(0));
+	
+       		 if(response == 'y'){
+                mkdir(TRASHPATH, 0755);
+                puts("You have successfully created!");
+                puts("Now you can send files to the Recycle Bin.");
+                return response;
+		}
+      		  if(response== 'n'){
+//                puts("Do not create Recycle Bin");
 
-	case 'n':
-		puts("Do not create Recycle Bin");
+                return response;
+       		 }
 		
-		return response;
+	/*	if(sleeptry--==0){
+			printf("timeout\n");
+			return 'p';
+		}
+		BEEP;*/
 	}
 }
 
+
+
+void set_nodelay_mode(void){
+	int termflags;
+	termflags=fcntl(0,F_GETFL);
+	termflags |= O_NDELAY;
+	fcntl(0,F_SETFL,termflags);
+}
 void get_decision(int tries) {
 	char decision;
 	int fd;
-	int wr;
+	//int wr;	//안써서 주석처리
 
 	puts("Do you want to delete the file? Or throw it in the trash?\n - delete : d, throw : t");
 
@@ -455,6 +490,7 @@ int get_char(int flag) {
 			}
 		}
 	}
+	return 0;
 }
 
 void handler(int signum) {
@@ -477,7 +513,7 @@ void trash_exec(void) {
 	if (flag == -1) {
 		tty_mode(0);
 		set_terminal();
-		get_response(MAXTRIES);
+		get_response(MAXTRIES,SLEEPTRIES);
 		tty_mode(1);
 	}
 	else {
