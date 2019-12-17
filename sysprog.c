@@ -11,28 +11,28 @@
 #include<sys/stat.h>
 #include<sys/wait.h>
 
-#define SLEEPTIME 1
-#define SLEEPTRIES 5
-#define MAXTRIES 3
+#define SLEEPTIME 1									//for nodelaymode, 1s
+#define SLEEPTRIES 5									//total 5s
+#define MAXTRIES 3									//allow only 3 miss infut
 #define CAMPERPATH "/home/camper/"			//camper
 #define TRASHPATH "/home/camper/trash"		//camper/trash
 #define oops(message,num) {	perror(message); exit(num);	} 
 #define BEEP putchar('\a');
 
-int check_the_trash(void);
+int check_the_trash(void);								//if there are trashbin dir??
 void trash_exec(void);
 
-int check_the_file(void);
-void initial_arglist(void);
-void make_arglist(char *);
+int check_the_file(void);								//check pwd.txt that store deleting files original PATH.
+void initial_arglist(void);								//initial arglist by NULL
+void make_arglist(char *);								//make arglist by argString that users input for exec()
 
 void tty_mode(int);
 void set_terminal(void);
-char get_response(int,int);
+char get_response(int,int);							// Handle user input for the ~@ option
 void get_decision(int);
-int get_char(int);
+int get_char(int);			// Handle user input for rm option
 void set_nodelay_mode(void);
-void handler(int);
+void handler(int);			//ctrl + c handler
 
 ino_t getInode(char *);
 void dirPath(ino_t);
@@ -45,8 +45,8 @@ char *arglist[BUFSIZ];
 char file_path[BUFSIZ];
 int idx;
 
-char nowloc[256];
-char befoloc[256];
+char nowloc[256];			//store current dir path
+char befoloc[256];			// use at ~! option
 
 /*
 	- pwd issue : pwd file 생성, 어떤 디렉토리에 있는 file이라도 path와 filename을 pwd.txt file에 저장.
@@ -56,9 +56,9 @@ char befoloc[256];
 	- 코드 합치기..
 */
 int main(int argc, char *argv[]) {
-	int pid;
-	tty_mode(0);
-	printf("--------------------------------------------------------------------------------\n");
+	
+	tty_mode(0);					//save basic terminal mode
+	printf("--------------------------------------------------------------------------------\n");						//ui generate
 	puts("| Instructions");
 	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
 	puts("| ");
@@ -75,31 +75,31 @@ int main(int argc, char *argv[]) {
 
 	printf("--------------------------------------------------------------------------------\n\n");
 
-	signal(SIGINT, handler);
-	signal(SIGKILL, SIG_DFL);
+	signal(SIGINT, handler);							// hadler for ctrl + c
+	signal(SIGKILL, SIG_DFL);							
 	while (1) {
-		char argString[BUFSIZ];
+		char argString[BUFSIZ];						//for save user command
 		//char wannago[256];	//안써서 주석처리
 
 		//pwd
-		printNowLocat();
+		printNowLocat();								//Print the current working directory
 		if(strcmp(nowloc, TRASHPATH))
-			strcpy(befoloc, nowloc);
+			strcpy(befoloc, nowloc);					//Save directory patn that before shortcut
 
-		fgets(argString, BUFSIZ, stdin);
+		fgets(argString, BUFSIZ, stdin);				// waiting for user input
 		if(argString[0] == '\n' || argString[0] == ' ')
 			continue;
 
-		argString[strlen(argString) - 1] = '\0';
+		argString[strlen(argString) - 1] = '\0';		// save NULL instead '\n'
 
-		if (!strcmp(argString, "~@")) {
+		if (!strcmp(argString, "~@")) {				//Options for creating a trashbin
 			int flag = check_the_trash();
 			char ch;
 			if (flag == -1) {
 				tty_mode(0);
 				set_terminal();
 				//set_nodelay_mode();
-				ch = get_response(MAXTRIES,SLEEPTRIES);
+				ch = get_response(MAXTRIES,SLEEPTRIES);		// manage y,n input
 				tty_mode(1);
 
 				if (ch == 'n') 
@@ -108,29 +108,29 @@ int main(int argc, char *argv[]) {
 					puts("Now you can send files to the Recycle Bin.");
 			}
 		}
-		else if(!strcmp(argString, "~~")){
+		else if(!strcmp(argString, "~~")){				//Options for the Trashbin dir Shortcut
 			chdir(TRASHPATH);
 		}//shortcut
-		else if(!strcmp(argString, "~!")){
+		else if(!strcmp(argString, "~!")){				//Return to the path before the shortcut
 			if(befoloc != NULL)
 				chdir(befoloc);
 		}
-		else if (!strcmp(argString,"~b")){
-			pid = fork();
-			if(pid>0){
+		else if (!strcmp(argString,"~b")){				// Option for flush Trashbin
+			int pid_b;
+			pid_b = fork();
+			if(pid_b>0){
 				wait(NULL);
 				mkdir(TRASHPATH, 0755);
 				puts("You have successfully flushed Recycle Bin.");
 			}
 			else{
-				execlp("rm","rm","-r",TRASHPATH,NULL);
-		                
+				execlp("rm","rm","-r",TRASHPATH,NULL);             
 			}
 		
 		}//shortcut
 		else {
 			initial_arglist();
-			make_arglist(argString);
+			make_arglist(argString);			// make arglist for exec()
 
 			if (!strcmp(*arglist, "rm")) {		//delete or trash
 				int pid;
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
 				해당 경로에 file mv! (exec(mv))
 				*/
 			}
-			else if (!strcmp(*arglist, "cd")) {
+			else if (!strcmp(*arglist, "cd")) {		//handle cd error
 				getcwd(file_path, BUFSIZ);
 				strcpy(file_path, arglist[1]);
 				chdir(file_path);
@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-void make_arglist(char *argString) {
+void make_arglist(char *argString) {				//make arglist by argString that users input.
 	char *token;
 	char *delimiter = " ";
 
@@ -205,13 +205,13 @@ void make_arglist(char *argString) {
 	*/
 }
 
-void initial_arglist() {
+void initial_arglist() {						//initial arglist by NULL
 	for (int i = 0; i < BUFSIZ; i++)
 		arglist[i] = NULL;
 	idx = 0;
 }
 
-int check_the_trash(void) {
+int check_the_trash(void) {			//check there is trashbin dir in certain PATH.
 	DIR *dir_info;
 	struct dirent *dir_entry;
 
@@ -232,7 +232,7 @@ int check_the_trash(void) {
 	return -1;
 }
 
-int check_the_file(void) {
+int check_the_file(void) {						//check pwd.txt that store deleting files original PATH.
 	DIR *dir_info;
 	struct dirent *dir_entry;
 
@@ -258,7 +258,7 @@ int check_the_file(void) {
 }
 
 
-ino_t getInode(char *filename) {
+ino_t getInode(char *filename) {					// get_inode
 	struct stat info;
 
 	if (stat(filename, &info) == -1) {
@@ -270,7 +270,7 @@ ino_t getInode(char *filename) {
 	return info.st_ino;
 }
 
-void dirPath(ino_t st_ino) {
+void dirPath(ino_t st_ino) {			//printpathto
 	ino_t inode;
 	char locate[BUFSIZ];
 
@@ -285,7 +285,7 @@ void dirPath(ino_t st_ino) {
 	}
 }
 
-void subdirPath(ino_t st_ino, char *string, int length) {
+void subdirPath(ino_t st_ino, char *string, int length) {		//inum_to_name
 	DIR *dir_ptr;
 	struct dirent *direntp;
 
@@ -312,7 +312,7 @@ void subdirPath(ino_t st_ino, char *string, int length) {
 	exit(1);
 }
 
-void printNowLocat() {
+void printNowLocat() {						//notify user current directory
 	//char nowloc[256];//전역
 
 	getcwd(nowloc, 256);
@@ -327,7 +327,7 @@ void printNowLocat() {
 	chdir(nowloc);
 }
 
-void tty_mode(int how) {
+void tty_mode(int how) {						// save or rollback ttymode
 	static struct termios original_mode;
 
 	if (how == 0)
@@ -336,7 +336,7 @@ void tty_mode(int how) {
 		tcsetattr(0, TCSANOW, &original_mode);
 }
 
-void set_terminal(void) {
+void set_terminal(void) {						// set terminal mode
 	struct termios ttystate;
 
 	tcgetattr(0, &ttystate);
@@ -347,7 +347,7 @@ void set_terminal(void) {
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
-char get_response(int tries,int sleeptry) {
+char get_response(int tries,int sleeptry) {				// Handle user input for the ~@ option
 	char response;
 	puts("There is no Recycle bin. Do you want to create it? y/n");
 
@@ -377,13 +377,13 @@ char get_response(int tries,int sleeptry) {
 
 
 
-void set_nodelay_mode(void){
+void set_nodelay_mode(void){							//for timeout operation
 	int termflags;
 	termflags=fcntl(0,F_GETFL);
 	termflags |= O_NDELAY;
 	fcntl(0,F_SETFL,termflags);
 }
-void get_decision(int tries) {
+void get_decision(int tries) {							// handle rm command's option
 	char decision;
 	int fd;
 	//int wr;	//안써서 주석처리
@@ -456,7 +456,7 @@ void get_decision(int tries) {
 	}
 }
 
-int get_char(int flag) {
+int get_char(int flag) {						// Handle user input for rm option
 	int ch;
 	int count = 0;
 
@@ -476,7 +476,7 @@ int get_char(int flag) {
 		}
 	}
 	else {
-		while (((ch = getchar()) != EOF)) {
+		while (((ch = getchar()) != EOF)) {	
 			if (strchr("dDtT", ch))
 				return ch;
 			else
@@ -493,7 +493,7 @@ int get_char(int flag) {
 	return 0;
 }
 
-void handler(int signum) {
+void handler(int signum) {							// ctrl + c handler
 	tty_mode(1);
 	puts("");
 	puts("shutdown");
@@ -506,7 +506,7 @@ void handler(int signum) {
 }
 
 
-void trash_exec(void) {
+void trash_exec(void) {						
 
 	int flag = check_the_trash();
 
