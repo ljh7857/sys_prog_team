@@ -62,8 +62,8 @@ int main(int argc, char *argv[]) {
 	puts("| Instructions");
 	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
 	puts("| ");
-	printf("You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n - there are no additional options. \n");
-	puts("");
+	printf("| You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n|  - there are no additional options. \n");
+	puts("| ");
 	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
 	puts("| ");
 	printf("| You can use the [ re ] command to restore files from the Recycle Bin. \n|  - There are no additional options.\n");
