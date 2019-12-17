@@ -39,6 +39,8 @@ void subdirPath(ino_t, char *, int);
 
 void printNowLocat();	//쉘처럼 현재 위치를 출력
 
+void recover_trash_file();	//복구하기
+
 char *path;
 char *arglist[BUFSIZ];
 char file_path[BUFSIZ];
@@ -83,7 +85,6 @@ int main(int argc, char *argv[]) {
 	signal(SIGKILL, SIG_DFL);
 	while (1) {
 		char argString[BUFSIZ];
-		char wannago[256];
 
 		//pwd
 		printNowLocat();
@@ -151,24 +152,38 @@ int main(int argc, char *argv[]) {
 			if (!strcmp(*arglist, "rm")) {		//delete or trash
 				int pid;
 
-				if ((pid = fork()) == -1)
-					oops("cannot fork", 1);
-
-				if (pid > 0) {
-					wait(NULL);
-
-					continue;
+				getcwd(file_path, BUFSIZ);
+				if (!strcmp(file_path, TRASHPATH)) {
+					for (int i = 1; i < idx; i++)
+						unlink(arglist[i]);
 				}
 				else {
-					tty_mode(0);
-					set_terminal();
-					get_decision(MAXTRIES);
-					tty_mode(1);
+
+					if ((pid = fork()) == -1)
+						oops("cannot fork", 1);
+
+					if (pid > 0) {
+						wait(NULL);
+
+						continue;
+					}
+					else {
+						tty_mode(0);
+						set_terminal();
+						get_decision(MAXTRIES);
+						tty_mode(1);
+					}
 				}
 			}
 			///Do we have to deal with rmdir too???
 			else if (!strcmp(*arglist, "re")) {		//recover
 				//puts(argString);
+				if (check_the_trash() == -1) {
+					printf("No Recycle Bin\n");
+					continue;
+				}
+
+				recover_trash_file();
 				/*
 				pwd file에서 복원할 file의 이름을 file structure array에서 비교하여 해당 file이 있을 시 pwd file에서
 				filecount 숫자번째 줄의 경로를 받아옴.
@@ -202,6 +217,56 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+void recover_trash_file() {
+	int i;
+
+	char file_read[BUFSIZ];
+	char file_name[BUFSIZ];
+	char dir_path[BUFSIZ];
+	char trash_path[BUFSIZ];
+
+	char *token;
+	char *delimiter = " ";
+
+	//re file1 file2
+	//pwd.txt
+	ssize_t size;
+
+	make_pwd();
+	FILE *fp = fdopen(fd, "r");
+
+	if (fp == NULL)
+		oops("file open", 1);
+
+	for (int i = 1; i < idx; i++) {
+		while (!feof(fp)) {		//handling
+			if (fgets(file_read, BUFSIZ, fp) == NULL) {
+				printf("there is no such file : %s\n", arglist[i]);
+				break;
+			}
+			file_read[strlen(file_read) - 1] = '\0';
+
+			token = strtok(file_read, delimiter);
+			strcpy(file_name, token);
+
+			token = strtok(NULL, delimiter);
+			strcpy(dir_path, token);
+			strcat(dir_path, "/");
+			strcat(dir_path, file_name);
+
+			strcpy(trash_path, TRASHPATH);
+			strcat(trash_path, "/");
+			strcat(trash_path, file_name);
+
+			if (!strcmp(arglist[i], file_name)) {
+				rename(trash_path, dir_path);
+				puts("recover successfully!");
+			}
+		}
+		fseek(fp, 0, SEEK_SET);
+	}
+}
+
 void make_arglist(char *argString) {
 	char *token;
 	char *delimiter = " ";
@@ -219,7 +284,6 @@ void make_arglist(char *argString) {
 		printf("arglist[%d] : %s\n", i, arglist[i]);
 	*/
 }
-
 void initial_arglist() {
 	for (int i = 0; i < BUFSIZ; i++)
 		arglist[i] = NULL;
@@ -373,7 +437,6 @@ char get_response(int tries) {
 		make_pwd();
 
 		puts("You have successfully created!");
-		puts("Now you can send files to the Recycle Bin.");
 
 		return response;
 
@@ -386,18 +449,15 @@ char get_response(int tries) {
 
 void get_decision(int tries) {
 	char decision;
-
 	int wr;
 
 	puts("Do you want to delete the file? Or throw it in the trash?\n - delete : d, throw : t");
-
 	decision = tolower(get_char(1));
 
 	switch (decision) {
 	case 't': {
 		tty_mode(1);
 
-		getcwd(file_path, BUFSIZ);
 		puts(file_path);		//file_path
 
 		trash_exec();
