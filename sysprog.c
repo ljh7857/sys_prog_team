@@ -43,6 +43,9 @@ char *arglist[BUFSIZ];
 char file_path[BUFSIZ];
 int idx;
 
+char nowloc[256];
+char befoloc[256];
+
 /*
 	- pwd issue : pwd file 생성, 어떤 디렉토리에 있는 file이라도 path와 filename을 pwd.txt file에 저장.
 				- execvp사용으로, trash 디렉토리로 move.
@@ -75,6 +78,8 @@ int main(int argc, char *argv[]) {
 
 		//pwd
 		printNowLocat();
+		if(strcmp(nowloc, TRASHPATH))
+			strcpy(befoloc, nowloc);
 
 		fgets(argString, BUFSIZ, stdin);
 		if(argString[0] == '\n' || argString[0] == ' ')
@@ -97,7 +102,13 @@ int main(int argc, char *argv[]) {
 					puts("Now you can send files to the Recycle Bin.");
 			}
 		}
-
+		else if(!strcmp(argString, "~~")){
+			chdir(TRASHPATH);
+		}//shortcut
+		else if(!strcmp(argString, "~!")){
+			if(befoloc != NULL)
+				chdir(befoloc);
+		}//shortcut
 		else {
 			initial_arglist();
 			make_arglist(argString);
@@ -147,6 +158,7 @@ int main(int argc, char *argv[]) {
 				}
 				else {
 					execvp(*arglist, arglist);
+					printf("if you see this message, retire");
 				}
 			}
 		}
@@ -282,7 +294,7 @@ void subdirPath(ino_t st_ino, char *string, int length) {
 }
 
 void printNowLocat() {
-	char nowloc[256];
+	//char nowloc[256];//전역
 
 	getcwd(nowloc, 256);
 
