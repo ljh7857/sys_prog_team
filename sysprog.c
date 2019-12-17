@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
 				}
 				else {
 					execvp(*arglist, arglist);
-					printf("if you see this message, retire");
+					break;//to kill the error execvp
 				}
 			}
 		}
