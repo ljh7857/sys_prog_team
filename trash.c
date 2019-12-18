@@ -39,6 +39,7 @@ void subdirPath(ino_t, char *, int);
 void printNowLocat();	
 
 void recover_trash_file();	
+void view_options();
 
 char *path;
 char *arglist[BUFSIZ];
@@ -52,33 +53,12 @@ char before_locate[BUFSIZ];
 
 int main(int argc, char *argv[]) {
 	tty_mode(0);
-	printf("--------------------------------------------------------------------------------\n");
-	puts("| Instructions");
-	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
-	puts("| ");
-	printf("| You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n| - there are no additional options. \n");
-	puts("| ");
-	printf("| You can use the [ ~~ ] command to go to the Recycle Bin shortcut.\n| - there are no additional options. \n");
-	puts("| ");
-	printf("| You can use the [ ~! ] command to Return to the path before the Recycle Bin shortcut.\n| - there are no additional options. \n");
-	puts("| ");
-	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
-	puts("| ");
-	printf("| You can use the [ re ] command to restore files from the Recycle Bin. \n|  - There are no additional options.\n");
-	puts("| ");
-	printf("| Other commands and options are also supported. \n");
-	puts("| ");
-	printf("| You can end the process using SIGNAL.");
-	puts("");
-
-	printf("--------------------------------------------------------------------------------\n\n");
+	view_options();
 
 	signal(SIGINT, handler);		//signal handler
 	signal(SIGKILL, SIG_DFL);
 	while (1) {						//while input signal
 		char argString[BUFSIZ];
-
-		
 		printNowLocat();		//print pwd
 
 		if (strcmp(now_locate, TRASHPATH))
@@ -87,7 +67,13 @@ int main(int argc, char *argv[]) {
 		fgets(argString, BUFSIZ, stdin);
 		argString[strlen(argString) - 1] = '\0';
 
-		if (!strcmp(argString, "~@")) {			//trash 실행 검사
+		if (!strcmp(argString, "-print")) {
+			view_options();
+		}
+		else if (!strcmp(argString,"")
+			continue;
+
+		else if (!strcmp(argString, "~@")) {			//trash 실행 검사
 			flag = check_the_trash();
 			char ch;
 			if (flag == -1) {
@@ -203,8 +189,6 @@ int main(int argc, char *argv[]) {
 }
 
 void recover_trash_file() {
-	int i;
-
 	char file_read[BUFSIZ];
 	char file_name[BUFSIZ];
 	char dir_path[BUFSIZ];
@@ -212,8 +196,6 @@ void recover_trash_file() {
 
 	char *token;
 	char *delimiter = " ";
-
-	ssize_t size;
 
 	make_pwd();
 	FILE *fp = fdopen(fd, "r");
@@ -282,7 +264,7 @@ int check_the_trash(void) {
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while (dir_entry = readdir(dir_info)) {
+	while ((dir_entry = readdir(dir_info))) {
 		if (strcmp(dir_entry->d_name, "trash") == 0) {
 			puts("There is Recycle Bin");
 
@@ -297,26 +279,30 @@ int check_the_trash(void) {
 int check_the_file(void) {
 	DIR *dir_info;
 	struct dirent *dir_entry;
+	int return_value = -1;
 
 	dir_info = opendir(CAMPERPATH);
 
 	if (dir_info == NULL)
 		oops("open", 1);
 
-	while (dir_entry = readdir(dir_info)) {
+	while ((dir_entry = readdir(dir_info))) {
 		if (strcmp(dir_entry->d_name, "pwd.txt") == 0) {
 			puts("There is pwd.txt");
 
-			closedir(dir_info);
-			return 0;
+			return_value = 0;
+			break;
 		}
 	}
 
-	closedir(dir_info);
 	puts("There is no pwd.txt");
 	puts("Create pwd.txt");
 
-	return -1;
+	return_value = -1;
+	closedir(dir_info);
+	
+
+	return return_value;
 }
 
 
@@ -428,6 +414,8 @@ char get_response(int tries) {
 
 		return response;
 	}
+
+	return 0;
 }
 
 void get_decision(int tries) {
@@ -514,6 +502,8 @@ int get_char(int flag_) {
 			}
 		}
 	}
+
+	return 0;
 }
 
 void handler(int signum) {
@@ -575,4 +565,29 @@ void make_pwd(void) {
 		}
 	}
 	chdir(file_path);
+}
+
+void view_options() {
+	printf("--------------------------------------------------------------------------------\n");
+	puts("| Instructions");
+	printf("| You can use the [ ~@ ] command to verify that the Recycle Bin is working.\n|  - If there is no recycle bin, you can create it.\n|  - There are no additional options\n");
+	puts("| ");
+	printf("| You can use the [ ~b ] command to flush that all contents in Recycle Bin.\n| - there are no additional options. \n");
+	puts("| ");
+	printf("| You can use the [ ~~ ] command to go to the Recycle Bin shortcut.\n| - there are no additional options. \n");
+	puts("| ");
+	printf("| You can use the [ ~! ] command to Return to the path before the Recycle Bin shortcut.\n| - there are no additional options. \n");
+	puts("| ");
+	printf("| You can use the [ rm ] command to decide whether to use the Recycle Bin or not.\n|  - There are additional options. \n");
+	puts("| ");
+	printf("| You can use the [ re ] command to restore files from the Recycle Bin. \n|  - There are no additional options.\n");
+	puts("| ");
+	printf("| Other commands and options are also supported. \n");
+	puts("| ");
+	printf("| You can end the process using SIGNAL.");
+	puts("");
+	puts("");
+	printf("| You can use the [ -print ] command to see the available options.");
+	puts("");
+	printf("--------------------------------------------------------------------------------\n\n");
 }
