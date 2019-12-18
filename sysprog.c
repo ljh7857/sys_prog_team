@@ -13,8 +13,8 @@
 
 #define SLEEPTIME 2
 #define MAXTRIES 3
-#define CAMPERPATH "/home/camper"			//camper
-#define TRASHPATH "/home/camper/trash"		//camper/trash
+#define CAMPERPATH "/home/camper/teamp"			//camper
+#define TRASHPATH "/home/camper/teamp/trash"		//camper/trash
 #define oops(message,num) {	perror(message); exit(num);	} 
 
 int check_the_trash(void);
@@ -261,6 +261,7 @@ void recover_trash_file() {
 			if (!strcmp(arglist[i], file_name)) {
 				rename(trash_path, dir_path);
 				puts("recover successfully!");
+				break;
 			}
 		}
 		fseek(fp, 0, SEEK_SET);
@@ -429,6 +430,7 @@ char get_response(int tries) {
 	char response;
 
 	puts("There is no Recycle bin. Do you want to create it? y/n");
+
 	response = tolower(get_char(0));
 
 	switch (response) {
