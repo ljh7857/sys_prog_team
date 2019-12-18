@@ -468,17 +468,17 @@ void get_decision(int tries) {
 
 		//chdir(file_path);
 		char temp_string[BUFSIZ];
-		printf("idx : %d\n", idx);
+		//printf("idx : %d\n", idx);//debug
 		for (int i = 1; i < idx - 1; i++) {
 			if (*arglist[i] != '-') {
 				strcpy(temp_string, arglist[i]);
-				printf("arglist[%d] : %s\n", i, arglist[i]);
+				//printf("arglist[%d] : %s\n", i, arglist[i]);//debug
 
 				strcat(temp_string, " ");
 				strcat(temp_string, file_path);
 				temp_string[strlen(temp_string)] = '\n';
 
-				printf("temp_string : %s\n", temp_string);
+				//printf("temp_string : %s\n", temp_string);//debug
 
 				if ((wr = write(fd, temp_string, strlen(temp_string))) == -1) {
 					tty_mode(1);
